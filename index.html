@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TEKXS | Amazon Shipment Intelligence Portal</title>
+    <title>TEKXS | Amazon Shipment Portal</title>
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -234,6 +234,18 @@
             </div>
             <div id="employeeSummaryGrid" class="emp-summary-grid"></div>
           </section>
+
+          <!-- Top Performer Leaderboard -->
+          <section class="panel" style="margin-top: 20px" id="leaderboardPanel">
+            <div class="panel-heading">
+              <div>
+                <h3>🏆 Leaderboard & Targets</h3>
+                <p>Top performers for today, this week, and all time</p>
+              </div>
+              <button class="text-btn" data-page="employees">Manage Targets →</button>
+            </div>
+            <div id="leaderboardGrid" class="leaderboard-grid"></div>
+          </section>
         </section>
 
         <!-- ── Page: References ── -->
@@ -433,6 +445,27 @@
             </div>
           </div>
 
+          <!-- ── Employee Targets Panel ── -->
+          <div class="panel analytics-panel collapsible-panel open" id="empTargetsPanel" style="margin-bottom: 20px">
+            <div class="panel-heading collapsible-trigger" onclick="togglePanel('empTargetsPanel')">
+              <div style="display: flex; align-items: center">
+                <div>
+                  <h3 style="margin: 0">🎯 Daily Targets</h3>
+                  <p style="margin: 2px 0 0">Set each associate's daily unit target for progress tracking</p>
+                </div>
+                <span class="collapse-badge">Click to manage</span>
+              </div>
+              <span class="collapse-icon">▼</span>
+            </div>
+            <div class="collapsible-body">
+              <div id="empTargetsGrid" class="emp-targets-grid"></div>
+              <div style="padding: 12px 16px 4px; display:flex; gap:10px;">
+                <button class="primary-btn" id="saveTargetsBtn">💾 Save Targets</button>
+                <span id="targetsSavedMsg" style="color: var(--green); font-weight:600; align-self:center; font-size:13px; opacity:0;">✓ Targets saved!</span>
+              </div>
+            </div>
+          </div>
+
           <!-- ── Heavy Filter Bar: Employees ── -->
           <div class="filter-bar">
             <div class="filter-presets">
@@ -529,6 +562,7 @@
                     <th>Total Units</th>
                     <th>Submitted</th>
                     <th>Rejected</th>
+                    <th>Daily Target</th>
                   </tr>
                 </thead>
                 <tbody id="employeeTable"></tbody>
@@ -706,14 +740,27 @@ Date | Reference No. | ASIN | Status | Units | Time | Company
           <div class="panel">
             <div class="panel-heading">
               <div>
-                <h3>Data Backup</h3>
-                <p>Export records for backup or spreadsheet use.</p>
+                <h3>Data Backup &amp; Restore</h3>
+                <p>Export or restore all portal data for safe multi-device transfer.</p>
               </div>
             </div>
-            <button class="secondary-btn" id="exportCsv">Export CSV</button>
-            <button class="secondary-btn" id="clearDemo">
-              Reset Demo Data
-            </button>
+            <div class="backup-actions">
+              <div class="backup-group">
+                <p class="backup-label">📤 Export</p>
+                <button class="secondary-btn" id="exportCsv">Export CSV</button>
+                <button class="primary-btn" id="downloadJson">⬇ Download JSON Backup</button>
+              </div>
+              <div class="backup-group">
+                <p class="backup-label">📥 Restore</p>
+                <label class="file-upload-btn secondary-btn" for="restoreJsonFile">📂 Upload JSON Backup</label>
+                <input type="file" id="restoreJsonFile" accept=".json" style="display:none" />
+                <span id="restoreFileName" style="font-size:12px; color:var(--muted); align-self:center;">No file chosen</span>
+              </div>
+              <div class="backup-group">
+                <p class="backup-label">⚙️ Danger Zone</p>
+                <button class="secondary-btn" id="clearDemo">Reset Demo Data</button>
+              </div>
+            </div>
           </div>
         </section>
       </main>
@@ -736,6 +783,7 @@ Date | Reference No. | ASIN | Status | Units | Time | Company
             <label
               >Reference No. *
               <input id="refNo" required placeholder="e.g. REQ-2026-1645" />
+              <span id="refNoDuplicateWarning" style="display:none; color:#f43f5e; font-size:11px; font-weight:600; margin-top:4px;">⚠ This Reference No. already exists!</span>
             </label>
             <label
               >Shipment Date *

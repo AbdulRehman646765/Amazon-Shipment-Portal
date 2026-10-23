@@ -1,8 +1,11 @@
 const STORAGE_KEY = "shiptrack_amazon_portal_v1";
+const TARGETS_KEY = "shiptrack_employee_targets_v1";
 
 let records = loadRecords();
+let targets = loadTargets();
 let activeDetailId = null;
 let toastTimer;
+
 
 const $ = (id) => document.getElementById(id);
 
@@ -105,6 +108,217 @@ function saveRecords() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(records));
 }
 
+/* ── Targets: Load / Save ── */
+function loadTargets() {
+  try {
+    const saved = localStorage.getItem(TARGETS_KEY);
+    if (saved) return JSON.parse(saved);
+  } catch (e) {}
+  return {
+    "Abdul Rehman": 500,
+    "Nasir Naveed": 450,
+    "Aqeel Qaisar": 400,
+    "Raouf Ahmad": 350,
+    "Junaid Shah": 300,
+  };
+}
+
+function saveTargets() {
+  localStorage.setItem(TARGETS_KEY, JSON.stringify(targets));
+}
+
+/* ── JSON Backup & Restore ── */
+function downloadJsonBackup() {
+  const payload = {
+    version: 2,
+    exportedAt: new Date().toISOString(),
+    records,
+    targets,
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  const date = localDate().replace(/-/g, "");
+  link.href = url;
+  link.download = `shipment_portal_backup_${date}.json`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+  showToast("✓ JSON backup downloaded successfully.");
+}
+
+function handleRestoreJsonFile(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+
+      // Support both plain array and versioned backup
+      let imported = [];
+      let importedTargets = {};
+      if (Array.isArray(data)) {
+        imported = data;
+      } else if (data.records && Array.isArray(data.records)) {
+        imported = data.records;
+        importedTargets = data.targets || {};
+      } else {
+        showToast("⚠ Invalid backup file format.");
+        return;
+      }
+
+      if (!confirm(`This will REPLACE all current data with ${imported.length} records from the backup.\n\nAre you sure?`)) return;
+
+      imported.forEach((r) => { r.date = normalizeDate(r.date); });
+      records = imported;
+      targets = importedTargets;
+      saveRecords();
+      saveTargets();
+      renderAll();
+      renderLeaderboard();
+      renderEmpTargetsGrid();
+      showToast(`✓ Restored ${records.length} records from backup.`);
+
+      // Reset file input display
+      if ($("restoreFileName")) $("restoreFileName").textContent = "No file chosen";
+      if ($("restoreJsonFile")) $("restoreJsonFile").value = "";
+    } catch (err) {
+      showToast("⚠ Could not read backup file. Make sure it is a valid JSON backup.");
+    }
+  };
+  reader.readAsText(file);
+}
+
+/* ── Employee Targets Grid Renderer ── */
+function renderEmpTargetsGrid() {
+  const el = $("empTargetsGrid");
+  if (!el) return;
+
+  const allNames = [...new Set(records.map((r) => r.employee.trim()).filter(Boolean))].sort();
+
+  if (!allNames.length) {
+    el.innerHTML = `<p class="empty-cell" style="padding:16px;">No employees found. Import or add references first.</p>`;
+    return;
+  }
+
+  el.innerHTML = allNames.map((name) => {
+    const initial = name.charAt(0).toUpperCase();
+    const currentTarget = targets[name] || 0;
+    return `
+    <div class="emp-target-row">
+      <div class="emp-target-avatar">${escapeHtml(initial)}</div>
+      <span class="emp-target-name" title="${escapeHtml(name)}">${escapeHtml(name)}</span>
+      <input
+        type="number"
+        class="emp-target-input"
+        data-emp-name="${escapeHtml(name)}"
+        value="${currentTarget}"
+        min="0"
+        step="50"
+        placeholder="0"
+        title="Daily unit target for ${escapeHtml(name)}"
+      />
+    </div>`;
+  }).join("");
+}
+
+function saveTargetsFromGrid() {
+  const inputs = document.querySelectorAll(".emp-target-input[data-emp-name]");
+  inputs.forEach((input) => {
+    const name = input.dataset.empName;
+    const val = Number(input.value) || 0;
+    targets[name] = val;
+  });
+  saveTargets();
+
+  const msg = $("targetsSavedMsg");
+  if (msg) {
+    msg.style.opacity = "1";
+    setTimeout(() => { msg.style.opacity = "0"; }, 2000);
+  }
+  renderLeaderboard();
+  renderEmployees();
+  showToast("✓ Targets saved.");
+}
+
+/* ── Leaderboard ── */
+function renderLeaderboard() {
+  const el = $("leaderboardGrid");
+  if (!el) return;
+
+  if (!records.length) {
+    el.innerHTML = `<p class="empty-cell" style="padding:16px 0;">No data yet. Import or add references to see leaderboard.</p>`;
+    return;
+  }
+
+  const today = localDate();
+  const weekStart = (() => {
+    const d = new Date();
+    d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); // Monday
+    return localDate(d);
+  })();
+
+  // Build stats per employee for today, this week, all time
+  const periods = [
+    { key: "today",    label: "Today",     filter: (r) => normalizeDate(r.date) === today },
+    { key: "week",     label: "This Week",  filter: (r) => normalizeDate(r.date) >= weekStart },
+    { key: "allTime",  label: "All Time",   filter: () => true },
+  ];
+
+  const allNames = [...new Set(records.map((r) => r.employee.trim()).filter(Boolean))];
+
+  const periodBlocks = periods.map(({ key, label, filter }) => {
+    const filtered = records.filter(filter);
+    const stats = allNames
+      .map((name) => {
+        const own = filtered.filter((r) => r.employee.trim() === name);
+        const units = own.reduce((s, r) => s + Number(r.units || 0), 0);
+        return { name, units, refs: own.length };
+      })
+      .filter((e) => e.units > 0)
+      .sort((a, b) => b.units - a.units)
+      .slice(0, 3);
+
+    if (!stats.length) return `
+      <div style="display:flex; flex-direction:column; gap:6px;">
+        <p class="leaderboard-label">${escapeHtml(label)}</p>
+        <p class="empty-cell" style="padding:8px 0; font-size:12px;">No data</p>
+      </div>`;
+
+    const rankEmojis = ["🥇","🥈","🥉"];
+
+    return `
+    <div style="display:flex; flex-direction:column; gap:10px;">
+      <p class="leaderboard-label">${escapeHtml(label)}</p>
+      ${stats.map((e, i) => {
+        const target = targets[e.name] || 0;
+        const pct = target > 0 ? Math.min(Math.round((e.units / target) * 100), 100) : 0;
+        const isOver = target > 0 && e.units >= target;
+        const targetText = target > 0
+          ? `<span class="leaderboard-target-pct${isOver ? " hit" : ""}">${e.units.toLocaleString()} / ${target.toLocaleString()} units ${isOver ? "✓" : `(${pct}%)`}</span>`
+          : `<span class="leaderboard-target-pct">${e.units.toLocaleString()} units · ${e.refs} ref${e.refs !== 1 ? "s" : ""}</span>`;
+
+        return `
+        <div class="leaderboard-card rank-${i+1}">
+          <span class="leaderboard-rank">${rankEmojis[i]}</span>
+          <span class="leaderboard-name" title="${escapeHtml(e.name)}">${escapeHtml(e.name)}</span>
+          <span class="leaderboard-units">${e.units.toLocaleString()}<span> units</span></span>
+          ${target > 0 ? `
+          <div class="leaderboard-target-bar">
+            <div class="leaderboard-target-fill${isOver ? " over-target" : ""}" style="width:${pct}%"></div>
+          </div>` : ""}
+          ${targetText}
+        </div>`;
+      }).join("")}
+    </div>`;
+  });
+
+  el.innerHTML = `<div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap:24px; width:100%;">${periodBlocks.join("")}</div>`;
+}
+
+
+
 function showToast(message) {
   const toast = $("toast");
   if (!toast) return;
@@ -113,6 +327,8 @@ function showToast(message) {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => toast.classList.remove("show"), 2800);
 }
+
+
 
 function statusOf(record) {
   if (!record.asins || !record.asins.length) return "Pending";
@@ -631,19 +847,20 @@ function renderEmployees() {
 
   $("employeeTable").innerHTML = stats.length
     ? stats
-        .map(
-          (e) => `
-    <tr>
-      <td><strong>${escapeHtml(e.name)}</strong></td>
-      <td>${e.refs}</td>
-      <td><strong>${e.units.toLocaleString()}</strong></td>
-      <td><span style="color:#16875c;font-weight:600;">${e.submitted}</span></td>
-      <td><span style="color:#d84a57;font-weight:600;">${e.rejected}</span></td>
-    </tr>
-  `,
-        )
+        .map((e) => {
+          const dailyTarget = targets[e.name] || 0;
+          let targetCell = `<td><span style="color:var(--muted);font-size:11px;">—</span></td>`;
+          if (dailyTarget > 0) {
+            const todayRecs = records.filter((r) => normalizeDate(r.date) === localDate() && r.employee.trim() === e.name);
+            const todayUnits = todayRecs.reduce((s, r) => s + Number(r.units || 0), 0);
+            const pct = Math.min(Math.round((todayUnits / dailyTarget) * 100), 100);
+            const isOver = todayUnits >= dailyTarget;
+            targetCell = `<td><div class="target-progress-cell"><div class="target-mini-bar"><div class="target-mini-fill${isOver ? ' over' : ''}" style="width:${pct}%"></div></div><span class="target-mini-text${isOver ? ' hit' : ''}">${todayUnits.toLocaleString()} / ${dailyTarget.toLocaleString()} (${pct}%)${isOver ? ' ✓' : ''}</span></div></td>`;
+          }
+          return `<tr><td><strong>${escapeHtml(e.name)}</strong></td><td>${e.refs}</td><td><strong>${e.units.toLocaleString()}</strong></td><td><span style="color:#16875c;font-weight:600;">${e.submitted}</span></td><td><span style="color:#d84a57;font-weight:600;">${e.rejected}</span></td>${targetCell}</tr>`;
+        })
         .join("")
-    : `<tr><td colspan="5" class="empty-cell">No data available.</td></tr>`;
+    : `<tr><td colspan="6" class="empty-cell">No data available.</td></tr>`;
 
   renderEmpCompanyBreakdown(filteredRecs);
   renderEmpAsinBreakdown(filteredRecs);
@@ -910,7 +1127,10 @@ function renderAll() {
   renderReferences();
   renderEmployees();
   renderSelects();
+  renderLeaderboard();
+  renderEmpTargetsGrid();
 }
+
 
 /**
  * Page Navigation - Fixed and enhanced to refresh views dynamically
@@ -968,6 +1188,10 @@ function openModal(record = null) {
   $("editId").value = record ? record.id : "";
   $("modalTitle").textContent = record ? "Edit Reference" : "Add New Reference";
 
+  const dupWarn = $("refNoDuplicateWarning");
+  if (dupWarn) dupWarn.style.display = "none";
+  if ($("refNo")) $("refNo").classList.remove("input-error");
+
   $("refNo").value = record ? record.refNo : "";
   $("refDate").value = record ? normalizeDate(record.date) : localDate();
   $("employeeName").value = record ? record.employee : "";
@@ -984,6 +1208,33 @@ function openModal(record = null) {
   $("refNo").focus();
 }
 
+function checkDuplicateRefNo() {
+  const refNoInput = $("refNo");
+  if (!refNoInput) return;
+  const refNoVal = refNoInput.value.trim().toLowerCase();
+  const currentId = $("editId") ? $("editId").value : "";
+  const dupWarn = $("refNoDuplicateWarning");
+
+  if (!refNoVal) {
+    if (dupWarn) dupWarn.style.display = "none";
+    refNoInput.classList.remove("input-error");
+    return;
+  }
+
+  const isDuplicate = records.some(
+    (r) => r.refNo && r.refNo.trim().toLowerCase() === refNoVal && r.id !== currentId
+  );
+
+  if (dupWarn) {
+    dupWarn.style.display = isDuplicate ? "block" : "none";
+  }
+  if (isDuplicate) {
+    refNoInput.classList.add("input-error");
+  } else {
+    refNoInput.classList.remove("input-error");
+  }
+}
+
 function closeModal() {
   $("referenceModal").classList.remove("open");
 }
@@ -992,14 +1243,37 @@ function addAsinRow(asin = "", status = "Pending") {
   const row = document.createElement("div");
   row.className = "asin-row";
   row.innerHTML = `
-    <input class="asin-value" placeholder="ASIN" value="${escapeHtml(asin)}" required>
+    <div style="display:flex;flex-direction:column;gap:2px;flex:1;">
+      <input class="asin-value" placeholder="ASIN (e.g. B0B8TGMSQX)" value="${escapeHtml(asin)}" required>
+      <span class="asin-valid-hint"></span>
+    </div>
     <select class="asin-status">
       <option ${status === "Pending" ? "selected" : ""}>Pending</option>
       <option ${status === "Submitted" ? "selected" : ""}>Submitted</option>
       <option ${status === "Rejected" ? "selected" : ""}>Rejected</option>
     </select>
-    <button type="button" class="remove-asin" title="Remove ASIN">×</button>
+    <button type="button" class="remove-asin" title="Remove ASIN">&times;</button>
   `;
+
+  const asinInput = row.querySelector(".asin-value");
+  const asinHint  = row.querySelector(".asin-valid-hint");
+
+  function validateAsinInput() {
+    const val = asinInput.value.trim().toUpperCase();
+    asinInput.value = val;
+    if (!val) { asinInput.classList.remove("asin-ok","asin-error"); asinHint.className="asin-valid-hint"; asinHint.textContent=""; return; }
+    const ok = /^[A-Z0-9]{10}$/.test(val);
+    if (ok) {
+      asinInput.classList.add("asin-ok"); asinInput.classList.remove("asin-error");
+      asinHint.className="asin-valid-hint valid"; asinHint.textContent="\u2713 Valid ASIN";
+    } else {
+      asinInput.classList.add("asin-error"); asinInput.classList.remove("asin-ok");
+      asinHint.className="asin-valid-hint invalid"; asinHint.textContent=`\u26a0 Must be 10 alphanumeric chars (${val.length}/10)`;
+    }
+  }
+
+  asinInput.addEventListener("input", validateAsinInput);
+  if (asin) validateAsinInput();
 
   row.querySelector(".remove-asin").addEventListener("click", () => {
     if ($("asinRows").children.length === 1) {
@@ -1044,7 +1318,11 @@ function saveReference(event) {
   );
   if (duplicate) {
     $("formError").textContent =
-      "This Reference No. already exists. Each reference can belong to only one employee.";
+      `Duplicate Error: Reference "${refNo}" already exists (assigned to ${duplicate.employee}). Each reference must be unique.`;
+    const dupWarn = $("refNoDuplicateWarning");
+    if (dupWarn) dupWarn.style.display = "block";
+    $("refNo").classList.add("input-error");
+    $("refNo").focus();
     return;
   }
 
@@ -1052,6 +1330,15 @@ function saveReference(event) {
   if (!asins.length || asins.some((a) => !a.asin)) {
     $("formError").textContent = "Please add at least one valid ASIN.";
     return;
+  }
+
+  const invalidAsins = asins.filter((a) => !/^[A-Z0-9]{10}$/.test(a.asin));
+  if (invalidAsins.length) {
+    const invalidList = invalidAsins.map((a) => `"${a.asin}"`).join(", ");
+    if (!confirm(`Warning: The following ASIN(s) do not match Amazon's 10-character alphanumeric standard:\n\n${invalidList}\n\nDo you want to save anyway?`)) {
+      $("formError").textContent = `Invalid ASIN format: ${invalidList}. Amazon ASINs must be exactly 10 alphanumeric characters.`;
+      return;
+    }
   }
 
   const normalized = asins.map((a) => a.asin);
@@ -1347,9 +1634,29 @@ function previewBulkReport() {
     return;
   }
 
+  // Count existing duplicates and non-standard ASINs
+  let existingCount = 0;
+  let invalidAsinCount = 0;
+  result.references.forEach((r) => {
+    if (records.some((rec) => rec.refNo && rec.refNo.toLowerCase() === r.refNo.toLowerCase())) {
+      existingCount++;
+    }
+    r.asins.forEach((a) => {
+      if (!/^[A-Z0-9]{10}$/.test(a.asin)) invalidAsinCount++;
+    });
+  });
+
+  let warnMsg = "";
+  if (existingCount > 0) {
+    warnMsg += `<br><span style="color:#d97706; font-size:12px; font-weight:600;">⚠️ ${existingCount} Reference(s) already exist in portal (new ASINs will be merged into existing records).</span>`;
+  }
+  if (invalidAsinCount > 0) {
+    warnMsg += `<br><span style="color:#dc2626; font-size:12px; font-weight:600;">⚠️ ${invalidAsinCount} ASIN(s) do not match Amazon 10-character alphanumeric standard.</span>`;
+  }
+
   summary.hidden = false;
-  summary.className = "import-summary success";
-  summary.innerHTML = `✓ Found <strong>${result.references.length} unique Reference(s)</strong> with <strong>${result.totalAsins} ASIN(s)</strong> for associate <strong>${escapeHtml(employee)}</strong>. Ready to import.`;
+  summary.className = (existingCount > 0 || invalidAsinCount > 0) ? "import-summary warning" : "import-summary success";
+  summary.innerHTML = `✓ Found <strong>${result.references.length} unique Reference(s)</strong> with <strong>${result.totalAsins} ASIN(s)</strong> for associate <strong>${escapeHtml(employee)}</strong>.${warnMsg}`;
 
   preview.innerHTML = `
     <div class="table-wrap">
@@ -1361,23 +1668,39 @@ function previewBulkReport() {
             <th>Company</th>
             <th>Units</th>
             <th>ASINs</th>
-            <th>Status</th>
+            <th>Status / Alerts</th>
           </tr>
         </thead>
         <tbody>
           ${result.references
-            .map(
-              (r) => `
-            <tr>
-              <td>${escapeHtml(r.date)}</td>
-              <td><strong>${escapeHtml(r.refNo)}</strong></td>
-              <td>${escapeHtml(r.company || "—")}</td>
-              <td>${r.units}</td>
-              <td>${r.asins.map((a) => `${escapeHtml(a.asin)} (${a.status})`).join(", ")}</td>
-              <td>${statusBadge(statusOf(r))}</td>
-            </tr>
-          `,
-            )
+            .map((r) => {
+              const isDup = records.some(
+                (rec) => rec.refNo && rec.refNo.toLowerCase() === r.refNo.toLowerCase()
+              );
+              const dupBadge = isDup
+                ? `<span class="badge" style="background:rgba(245,158,11,0.15); color:#d97706; margin-left:6px; font-size:10px;">⚠ Duplicate (Merge)</span>`
+                : `<span class="badge" style="background:rgba(16,185,129,0.15); color:#10b981; margin-left:6px; font-size:10px;">New</span>`;
+
+              const asinsHtml = r.asins
+                .map((a) => {
+                  const isValidAsin = /^[A-Z0-9]{10}$/.test(a.asin);
+                  return isValidAsin
+                    ? `<span>${escapeHtml(a.asin)} (${a.status})</span>`
+                    : `<span style="color:#dc2626; font-weight:700;" title="Non-standard Amazon ASIN">${escapeHtml(a.asin)} ⚠ (${a.status})</span>`;
+                })
+                .join(", ");
+
+              return `
+              <tr>
+                <td>${escapeHtml(r.date)}</td>
+                <td><strong>${escapeHtml(r.refNo)}</strong> ${dupBadge}</td>
+                <td>${escapeHtml(r.company || "—")}</td>
+                <td>${r.units}</td>
+                <td>${asinsHtml}</td>
+                <td>${statusBadge(statusOf(r))}</td>
+              </tr>
+            `;
+            })
             .join("")}
         </tbody>
       </table>
@@ -1967,8 +2290,11 @@ function resetDemoData() {
     return;
 
   localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem(TARGETS_KEY);
   records = loadRecords();
+  targets = loadTargets();
   saveRecords();
+  saveTargets();
   renderAll();
   showToast("Demo data restored.");
 }
@@ -1996,6 +2322,7 @@ function init() {
   );
   $("addAsin")?.addEventListener("click", () => addAsinRow());
   $("referenceForm")?.addEventListener("submit", saveReference);
+  $("refNo")?.addEventListener("input", checkDuplicateRefNo);
 
   // ── Dashboard Filter Listeners ──
   document.querySelectorAll("[data-dash-preset]").forEach((btn) => {
@@ -2104,7 +2431,16 @@ function init() {
   $("copyReport")?.addEventListener("click", copyReport);
   $("downloadPdf")?.addEventListener("click", downloadPdfReport);
   $("exportCsv")?.addEventListener("click", exportCsv);
+  $("downloadJson")?.addEventListener("click", downloadJsonBackup);
+  $("restoreJsonFile")?.addEventListener("change", (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (file) {
+      if ($("restoreFileName")) $("restoreFileName").textContent = file.name;
+      handleRestoreJsonFile(file);
+    }
+  });
   $("clearDemo")?.addEventListener("click", resetDemoData);
+  $("saveTargetsBtn")?.addEventListener("click", saveTargetsFromGrid);
 
   // Global Copy Button Handler (Reference No & ASIN copy buttons)
   document.addEventListener("click", (event) => {
