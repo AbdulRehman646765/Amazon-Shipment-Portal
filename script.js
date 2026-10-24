@@ -6,7 +6,6 @@ let targets = loadTargets();
 let activeDetailId = null;
 let toastTimer;
 
-
 const $ = (id) => document.getElementById(id);
 
 function localDate(date = new Date()) {
@@ -101,7 +100,7 @@ function loadRecords() {
   const today = localDate();
   const yesterday = localDate(new Date(Date.now() - 86400000));
 
-  return []
+  return [];
 }
 
 function saveRecords() {
@@ -135,7 +134,9 @@ function downloadJsonBackup() {
     records,
     targets,
   };
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {
+    type: "application/json",
+  });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   const date = localDate().replace(/-/g, "");
@@ -168,9 +169,16 @@ function handleRestoreJsonFile(file) {
         return;
       }
 
-      if (!confirm(`This will REPLACE all current data with ${imported.length} records from the backup.\n\nAre you sure?`)) return;
+      if (
+        !confirm(
+          `This will REPLACE all current data with ${imported.length} records from the backup.\n\nAre you sure?`,
+        )
+      )
+        return;
 
-      imported.forEach((r) => { r.date = normalizeDate(r.date); });
+      imported.forEach((r) => {
+        r.date = normalizeDate(r.date);
+      });
       records = imported;
       targets = importedTargets;
       saveRecords();
@@ -181,10 +189,13 @@ function handleRestoreJsonFile(file) {
       showToast(`✓ Restored ${records.length} records from backup.`);
 
       // Reset file input display
-      if ($("restoreFileName")) $("restoreFileName").textContent = "No file chosen";
+      if ($("restoreFileName"))
+        $("restoreFileName").textContent = "No file chosen";
       if ($("restoreJsonFile")) $("restoreJsonFile").value = "";
     } catch (err) {
-      showToast("⚠ Could not read backup file. Make sure it is a valid JSON backup.");
+      showToast(
+        "⚠ Could not read backup file. Make sure it is a valid JSON backup.",
+      );
     }
   };
   reader.readAsText(file);
@@ -195,17 +206,20 @@ function renderEmpTargetsGrid() {
   const el = $("empTargetsGrid");
   if (!el) return;
 
-  const allNames = [...new Set(records.map((r) => r.employee.trim()).filter(Boolean))].sort();
+  const allNames = [
+    ...new Set(records.map((r) => r.employee.trim()).filter(Boolean)),
+  ].sort();
 
   if (!allNames.length) {
     el.innerHTML = `<p class="empty-cell" style="padding:16px;">No employees found. Import or add references first.</p>`;
     return;
   }
 
-  el.innerHTML = allNames.map((name) => {
-    const initial = name.charAt(0).toUpperCase();
-    const currentTarget = targets[name] || 0;
-    return `
+  el.innerHTML = allNames
+    .map((name) => {
+      const initial = name.charAt(0).toUpperCase();
+      const currentTarget = targets[name] || 0;
+      return `
     <div class="emp-target-row">
       <div class="emp-target-avatar">${escapeHtml(initial)}</div>
       <span class="emp-target-name" title="${escapeHtml(name)}">${escapeHtml(name)}</span>
@@ -220,7 +234,8 @@ function renderEmpTargetsGrid() {
         title="Daily unit target for ${escapeHtml(name)}"
       />
     </div>`;
-  }).join("");
+    })
+    .join("");
 }
 
 function saveTargetsFromGrid() {
@@ -235,7 +250,9 @@ function saveTargetsFromGrid() {
   const msg = $("targetsSavedMsg");
   if (msg) {
     msg.style.opacity = "1";
-    setTimeout(() => { msg.style.opacity = "0"; }, 2000);
+    setTimeout(() => {
+      msg.style.opacity = "0";
+    }, 2000);
   }
   renderLeaderboard();
   renderEmployees();
@@ -261,12 +278,22 @@ function renderLeaderboard() {
 
   // Build stats per employee for today, this week, all time
   const periods = [
-    { key: "today",    label: "Today",     filter: (r) => normalizeDate(r.date) === today },
-    { key: "week",     label: "This Week",  filter: (r) => normalizeDate(r.date) >= weekStart },
-    { key: "allTime",  label: "All Time",   filter: () => true },
+    {
+      key: "today",
+      label: "Today",
+      filter: (r) => normalizeDate(r.date) === today,
+    },
+    {
+      key: "week",
+      label: "This Week",
+      filter: (r) => normalizeDate(r.date) >= weekStart,
+    },
+    { key: "allTime", label: "All Time", filter: () => true },
   ];
 
-  const allNames = [...new Set(records.map((r) => r.employee.trim()).filter(Boolean))];
+  const allNames = [
+    ...new Set(records.map((r) => r.employee.trim()).filter(Boolean)),
+  ];
 
   const periodBlocks = periods.map(({ key, label, filter }) => {
     const filtered = records.filter(filter);
@@ -280,44 +307,53 @@ function renderLeaderboard() {
       .sort((a, b) => b.units - a.units)
       .slice(0, 3);
 
-    if (!stats.length) return `
+    if (!stats.length)
+      return `
       <div style="display:flex; flex-direction:column; gap:6px;">
         <p class="leaderboard-label">${escapeHtml(label)}</p>
         <p class="empty-cell" style="padding:8px 0; font-size:12px;">No data</p>
       </div>`;
 
-    const rankEmojis = ["🥇","🥈","🥉"];
+    const rankEmojis = ["🥇", "🥈", "🥉"];
 
     return `
     <div style="display:flex; flex-direction:column; gap:10px;">
       <p class="leaderboard-label">${escapeHtml(label)}</p>
-      ${stats.map((e, i) => {
-        const target = targets[e.name] || 0;
-        const pct = target > 0 ? Math.min(Math.round((e.units / target) * 100), 100) : 0;
-        const isOver = target > 0 && e.units >= target;
-        const targetText = target > 0
-          ? `<span class="leaderboard-target-pct${isOver ? " hit" : ""}">${e.units.toLocaleString()} / ${target.toLocaleString()} units ${isOver ? "✓" : `(${pct}%)`}</span>`
-          : `<span class="leaderboard-target-pct">${e.units.toLocaleString()} units · ${e.refs} ref${e.refs !== 1 ? "s" : ""}</span>`;
+      ${stats
+        .map((e, i) => {
+          const target = targets[e.name] || 0;
+          const pct =
+            target > 0
+              ? Math.min(Math.round((e.units / target) * 100), 100)
+              : 0;
+          const isOver = target > 0 && e.units >= target;
+          const targetText =
+            target > 0
+              ? `<span class="leaderboard-target-pct${isOver ? " hit" : ""}">${e.units.toLocaleString()} / ${target.toLocaleString()} units ${isOver ? "✓" : `(${pct}%)`}</span>`
+              : `<span class="leaderboard-target-pct">${e.units.toLocaleString()} units · ${e.refs} ref${e.refs !== 1 ? "s" : ""}</span>`;
 
-        return `
-        <div class="leaderboard-card rank-${i+1}">
+          return `
+        <div class="leaderboard-card rank-${i + 1}">
           <span class="leaderboard-rank">${rankEmojis[i]}</span>
           <span class="leaderboard-name" title="${escapeHtml(e.name)}">${escapeHtml(e.name)}</span>
           <span class="leaderboard-units">${e.units.toLocaleString()}<span> units</span></span>
-          ${target > 0 ? `
+          ${
+            target > 0
+              ? `
           <div class="leaderboard-target-bar">
             <div class="leaderboard-target-fill${isOver ? " over-target" : ""}" style="width:${pct}%"></div>
-          </div>` : ""}
+          </div>`
+              : ""
+          }
           ${targetText}
         </div>`;
-      }).join("")}
+        })
+        .join("")}
     </div>`;
   });
 
   el.innerHTML = `<div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap:24px; width:100%;">${periodBlocks.join("")}</div>`;
 }
-
-
 
 function showToast(message) {
   const toast = $("toast");
@@ -327,8 +363,6 @@ function showToast(message) {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => toast.classList.remove("show"), 2800);
 }
-
-
 
 function statusOf(record) {
   if (!record.asins || !record.asins.length) return "Pending";
@@ -458,7 +492,14 @@ function renderDashboard() {
     const name = r.employee.trim();
     if (!name) return;
     if (!empMap.has(name)) {
-      empMap.set(name, { refs: 0, units: 0, subAsins: 0, rejAsins: 0, subUnits: 0, rejUnits: 0 });
+      empMap.set(name, {
+        refs: 0,
+        units: 0,
+        subAsins: 0,
+        rejAsins: 0,
+        subUnits: 0,
+        rejUnits: 0,
+      });
     }
     const e = empMap.get(name);
     e.refs++;
@@ -473,7 +514,9 @@ function renderDashboard() {
     e.rejUnits += Math.round(Number(r.units || 0) * (rRej / rTotal));
   });
 
-  const empEntries = [...empMap.entries()].sort((a, b) => b[1].units - a[1].units);
+  const empEntries = [...empMap.entries()].sort(
+    (a, b) => b[1].units - a[1].units,
+  );
 
   if (!empEntries.length) {
     empSummaryEl.innerHTML = `<p class="empty-cell" style="padding:20px 0;">No employee data for the selected range.</p>`;
@@ -482,12 +525,13 @@ function renderDashboard() {
 
   const maxUnits = Math.max(...empEntries.map(([, e]) => e.units), 1);
 
-  empSummaryEl.innerHTML = empEntries.map(([name, e]) => {
-    const subPct = e.units ? Math.round((e.subUnits / e.units) * 100) : 0;
-    const rejPct = e.units ? Math.round((e.rejUnits / e.units) * 100) : 0;
-    const barWidth = Math.round((e.units / maxUnits) * 100);
-    const initial = name.charAt(0).toUpperCase();
-    return `
+  empSummaryEl.innerHTML = empEntries
+    .map(([name, e]) => {
+      const subPct = e.units ? Math.round((e.subUnits / e.units) * 100) : 0;
+      const rejPct = e.units ? Math.round((e.rejUnits / e.units) * 100) : 0;
+      const barWidth = Math.round((e.units / maxUnits) * 100);
+      const initial = name.charAt(0).toUpperCase();
+      return `
     <div class="emp-sum-card">
       <div class="emp-sum-top">
         <div class="emp-sum-avatar">${escapeHtml(initial)}</div>
@@ -511,7 +555,8 @@ function renderDashboard() {
         </div>
       </div>
     </div>`;
-  }).join("");
+    })
+    .join("");
 }
 
 /* ── Collapsible Panel Toggle ── */
@@ -526,7 +571,8 @@ window.togglePanel = togglePanel;
 function applyDatePreset(type, fromId, toId, callback) {
   const today = new Date();
   const pad = (n) => String(n).padStart(2, "0");
-  const fmt = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const fmt = (d) =>
+    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 
   let from = "";
   let to = "";
@@ -573,18 +619,32 @@ function populateRefFilterDropdowns() {
 
   if (empSelect) {
     const curEmp = empSelect.value;
-    const emps = [...new Set(records.map((r) => r.employee.trim()).filter(Boolean))].sort();
+    const emps = [
+      ...new Set(records.map((r) => r.employee.trim()).filter(Boolean)),
+    ].sort();
     empSelect.innerHTML =
       `<option value="">All Employees (${emps.length})</option>` +
-      emps.map((e) => `<option value="${escapeHtml(e)}" ${e === curEmp ? "selected" : ""}>${escapeHtml(e)}</option>`).join("");
+      emps
+        .map(
+          (e) =>
+            `<option value="${escapeHtml(e)}" ${e === curEmp ? "selected" : ""}>${escapeHtml(e)}</option>`,
+        )
+        .join("");
   }
 
   if (compSelect) {
     const curComp = compSelect.value;
-    const comps = [...new Set(records.map((r) => (r.company || "").trim()).filter(Boolean))].sort();
+    const comps = [
+      ...new Set(records.map((r) => (r.company || "").trim()).filter(Boolean)),
+    ].sort();
     compSelect.innerHTML =
       `<option value="">All Companies (${comps.length})</option>` +
-      comps.map((c) => `<option value="${escapeHtml(c)}" ${c === curComp ? "selected" : ""}>${escapeHtml(c)}</option>`).join("");
+      comps
+        .map(
+          (c) =>
+            `<option value="${escapeHtml(c)}" ${c === curComp ? "selected" : ""}>${escapeHtml(c)}</option>`,
+        )
+        .join("");
   }
 }
 
@@ -594,7 +654,7 @@ function renderRefFilterTags(active) {
   const tags = [];
   if (active.from || active.to) {
     tags.push({
-      label: `📅 ${active.from || '...'} → ${active.to || '...'}`,
+      label: `📅 ${active.from || "..."} → ${active.to || "..."}`,
       clear: () => {
         if ($("refFilterFrom")) $("refFilterFrom").value = "";
         if ($("refFilterTo")) $("refFilterTo").value = "";
@@ -660,8 +720,12 @@ function renderReferences() {
   populateRefFilterDropdowns();
 
   const query = ($("referenceSearch")?.value || "").trim().toLowerCase();
-  const from = $("refFilterFrom")?.value ? normalizeDate($("refFilterFrom").value) : "";
-  const to = $("refFilterTo")?.value ? normalizeDate($("refFilterTo").value) : "";
+  const from = $("refFilterFrom")?.value
+    ? normalizeDate($("refFilterFrom").value)
+    : "";
+  const to = $("refFilterTo")?.value
+    ? normalizeDate($("refFilterTo").value)
+    : "";
   const employee = ($("refFilterEmployee")?.value || "").trim();
   const company = ($("refFilterCompany")?.value || "").trim();
   const status = ($("refFilterStatus")?.value || "").trim();
@@ -678,10 +742,14 @@ function renderReferences() {
 
     if (query) {
       const matchHeader = [r.refNo, r.employee, r.company].some((v) =>
-        String(v || "").toLowerCase().includes(query),
+        String(v || "")
+          .toLowerCase()
+          .includes(query),
       );
       const matchAsin = (r.asins || []).some((a) =>
-        String(a.asin || "").toLowerCase().includes(query),
+        String(a.asin || "")
+          .toLowerCase()
+          .includes(query),
       );
       if (!matchHeader && !matchAsin) return false;
     }
@@ -690,11 +758,16 @@ function renderReferences() {
 
   // Sorting
   filtered.sort((a, b) => {
-    if (sortBy === "date_desc") return normalizeDate(b.date).localeCompare(normalizeDate(a.date));
-    if (sortBy === "date_asc") return normalizeDate(a.date).localeCompare(normalizeDate(b.date));
-    if (sortBy === "units_desc") return Number(b.units || 0) - Number(a.units || 0);
-    if (sortBy === "units_asc") return Number(a.units || 0) - Number(b.units || 0);
-    if (sortBy === "ref_asc") return String(a.refNo || "").localeCompare(String(b.refNo || ""));
+    if (sortBy === "date_desc")
+      return normalizeDate(b.date).localeCompare(normalizeDate(a.date));
+    if (sortBy === "date_asc")
+      return normalizeDate(a.date).localeCompare(normalizeDate(b.date));
+    if (sortBy === "units_desc")
+      return Number(b.units || 0) - Number(a.units || 0);
+    if (sortBy === "units_asc")
+      return Number(a.units || 0) - Number(b.units || 0);
+    if (sortBy === "ref_asc")
+      return String(a.refNo || "").localeCompare(String(b.refNo || ""));
     return 0;
   });
 
@@ -730,7 +803,8 @@ function renderReferences() {
   // Update Result Count Badge
   const totalUnits = filtered.reduce((s, r) => s + Number(r.units || 0), 0);
   if ($("refResultCount")) {
-    $("refResultCount").innerHTML = `Showing <strong>${filtered.length}</strong> of <strong>${records.length}</strong> shipments (${totalUnits.toLocaleString()} units)`;
+    $("refResultCount").innerHTML =
+      `Showing <strong>${filtered.length}</strong> of <strong>${records.length}</strong> shipments (${totalUnits.toLocaleString()} units)`;
   }
 
   // Render Filter Tags
@@ -746,15 +820,28 @@ function populateEmpFilterDropdowns() {
   const compSelect = $("empFilterCompany");
   if (compSelect) {
     const curComp = compSelect.value;
-    const comps = [...new Set(records.map((r) => (r.company || "").trim()).filter(Boolean))].sort();
+    const comps = [
+      ...new Set(records.map((r) => (r.company || "").trim()).filter(Boolean)),
+    ].sort();
     compSelect.innerHTML =
       `<option value="">All Companies (${comps.length})</option>` +
-      comps.map((c) => `<option value="${escapeHtml(c)}" ${c === curComp ? "selected" : ""}>${escapeHtml(c)}</option>`).join("");
+      comps
+        .map(
+          (c) =>
+            `<option value="${escapeHtml(c)}" ${c === curComp ? "selected" : ""}>${escapeHtml(c)}</option>`,
+        )
+        .join("");
   }
 }
 
-function getEmployeeStats(filteredRecs = records, query = "", sortBy = "units_desc") {
-  const allNames = [...new Set(records.map((r) => r.employee.trim()).filter(Boolean))];
+function getEmployeeStats(
+  filteredRecs = records,
+  query = "",
+  sortBy = "units_desc",
+) {
+  const allNames = [
+    ...new Set(records.map((r) => r.employee.trim()).filter(Boolean)),
+  ];
   let names = allNames;
   if (query) {
     names = names.filter((n) => n.toLowerCase().includes(query.toLowerCase()));
@@ -767,7 +854,9 @@ function getEmployeeStats(filteredRecs = records, query = "", sortBy = "units_de
       const units = own.reduce((sum, r) => sum + Number(r.units || 0), 0);
       const submitted = asins.filter((a) => a.status === "Submitted").length;
       const rejected = asins.filter((a) => a.status === "Rejected").length;
-      const subRate = asins.length ? Math.round((submitted / asins.length) * 100) : 0;
+      const subRate = asins.length
+        ? Math.round((submitted / asins.length) * 100)
+        : 0;
       return {
         name,
         refs: own.length,
@@ -794,8 +883,12 @@ function getEmployeeStats(filteredRecs = records, query = "", sortBy = "units_de
 function renderEmployees() {
   populateEmpFilterDropdowns();
 
-  const from = $("empFilterFrom")?.value ? normalizeDate($("empFilterFrom").value) : "";
-  const to = $("empFilterTo")?.value ? normalizeDate($("empFilterTo").value) : "";
+  const from = $("empFilterFrom")?.value
+    ? normalizeDate($("empFilterFrom").value)
+    : "";
+  const to = $("empFilterTo")?.value
+    ? normalizeDate($("empFilterTo").value)
+    : "";
   const company = ($("empFilterCompany")?.value || "").trim();
   const query = ($("empSearchInput")?.value || "").trim().toLowerCase();
   const sortBy = $("empFilterSort")?.value || "units_desc";
@@ -812,14 +905,15 @@ function renderEmployees() {
 
   // Result Badge
   if ($("empResultCount")) {
-    $("empResultCount").innerHTML = `Showing <strong>${stats.length}</strong> associate${stats.length !== 1 ? 's' : ''}`;
+    $("empResultCount").innerHTML =
+      `Showing <strong>${stats.length}</strong> associate${stats.length !== 1 ? "s" : ""}`;
   }
 
   // Active filter tags for employees
   const tagContainer = $("empFilterTags");
   if (tagContainer) {
     const tags = [];
-    if (from || to) tags.push(`📅 ${from || '...'} → ${to || '...'}`);
+    if (from || to) tags.push(`📅 ${from || "..."} → ${to || "..."}`);
     if (company) tags.push(`🏢 Company: ${company}`);
     if (query) tags.push(`🔍 "${query}"`);
     tagContainer.innerHTML = tags
@@ -851,11 +945,21 @@ function renderEmployees() {
           const dailyTarget = targets[e.name] || 0;
           let targetCell = `<td><span style="color:var(--muted);font-size:11px;">—</span></td>`;
           if (dailyTarget > 0) {
-            const todayRecs = records.filter((r) => normalizeDate(r.date) === localDate() && r.employee.trim() === e.name);
-            const todayUnits = todayRecs.reduce((s, r) => s + Number(r.units || 0), 0);
-            const pct = Math.min(Math.round((todayUnits / dailyTarget) * 100), 100);
+            const todayRecs = records.filter(
+              (r) =>
+                normalizeDate(r.date) === localDate() &&
+                r.employee.trim() === e.name,
+            );
+            const todayUnits = todayRecs.reduce(
+              (s, r) => s + Number(r.units || 0),
+              0,
+            );
+            const pct = Math.min(
+              Math.round((todayUnits / dailyTarget) * 100),
+              100,
+            );
             const isOver = todayUnits >= dailyTarget;
-            targetCell = `<td><div class="target-progress-cell"><div class="target-mini-bar"><div class="target-mini-fill${isOver ? ' over' : ''}" style="width:${pct}%"></div></div><span class="target-mini-text${isOver ? ' hit' : ''}">${todayUnits.toLocaleString()} / ${dailyTarget.toLocaleString()} (${pct}%)${isOver ? ' ✓' : ''}</span></div></td>`;
+            targetCell = `<td><div class="target-progress-cell"><div class="target-mini-bar"><div class="target-mini-fill${isOver ? " over" : ""}" style="width:${pct}%"></div></div><span class="target-mini-text${isOver ? " hit" : ""}">${todayUnits.toLocaleString()} / ${dailyTarget.toLocaleString()} (${pct}%)${isOver ? " ✓" : ""}</span></div></td>`;
           }
           return `<tr><td><strong>${escapeHtml(e.name)}</strong></td><td>${e.refs}</td><td><strong>${e.units.toLocaleString()}</strong></td><td><span style="color:#16875c;font-weight:600;">${e.submitted}</span></td><td><span style="color:#d84a57;font-weight:600;">${e.rejected}</span></td>${targetCell}</tr>`;
         })
@@ -880,7 +984,9 @@ function renderCompanyAnalytics(sourceRecords = records) {
     c.units += Number(r.units || 0);
   });
 
-  const entries = [...compMap.entries()].sort((a, b) => b[1].units - a[1].units);
+  const entries = [...compMap.entries()].sort(
+    (a, b) => b[1].units - a[1].units,
+  );
   if (!entries.length) {
     el.innerHTML = `<p class="empty-cell" style="padding:16px 0">No company data for current filter.</p>`;
     return;
@@ -894,7 +1000,7 @@ function renderCompanyAnalytics(sourceRecords = records) {
       <div class="analytics-item">
         <div class="analytics-item-header">
           <span class="analytics-item-label" title="${escapeHtml(co)}">${escapeHtml(co)}</span>
-          <span class="analytics-item-meta"><strong>${c.refs}</strong> shipment${c.refs !== 1 ? 's' : ''} · <strong>${c.units.toLocaleString()}</strong> units</span>
+          <span class="analytics-item-meta"><strong>${c.refs}</strong> shipment${c.refs !== 1 ? "s" : ""} · <strong>${c.units.toLocaleString()}</strong> units</span>
         </div>
         <div class="analytics-bar-track">
           <div class="analytics-bar-fill" style="width:${pct}%"></div>
@@ -916,7 +1022,8 @@ function renderAsinAnalytics(sourceRecords = records) {
     const perAsin = asins.length ? Math.round(units / asins.length) : units;
     asins.forEach((a) => {
       const key = (a.asin || "Unknown").trim();
-      if (!asinMap.has(key)) asinMap.set(key, { refs: 0, units: 0, submitted: 0 });
+      if (!asinMap.has(key))
+        asinMap.set(key, { refs: 0, units: 0, submitted: 0 });
       const entry = asinMap.get(key);
       entry.refs++;
       entry.units += perAsin;
@@ -924,7 +1031,9 @@ function renderAsinAnalytics(sourceRecords = records) {
     });
   });
 
-  const entries = [...asinMap.entries()].sort((a, b) => b[1].units - a[1].units).slice(0, 15);
+  const entries = [...asinMap.entries()]
+    .sort((a, b) => b[1].units - a[1].units)
+    .slice(0, 15);
   if (!entries.length) {
     el.innerHTML = `<p class="empty-cell" style="padding:16px 0">No ASIN data for current filter.</p>`;
     return;
@@ -939,7 +1048,7 @@ function renderAsinAnalytics(sourceRecords = records) {
       <div class="analytics-item">
         <div class="analytics-item-header">
           <span class="analytics-item-label" title="${escapeHtml(asin)}">${escapeHtml(asin)}</span>
-          <span class="analytics-item-meta">${a.refs} record${a.refs !== 1 ? 's' : ''} · <strong>${subPct}%</strong> submitted</span>
+          <span class="analytics-item-meta">${a.refs} record${a.refs !== 1 ? "s" : ""} · <strong>${subPct}%</strong> submitted</span>
         </div>
         <div class="analytics-bar-track">
           <div class="analytics-bar-fill green" style="width:${pct}%"></div>
@@ -954,7 +1063,9 @@ function renderEmpCompanyBreakdown(sourceRecords = records) {
   const el = $("empCompanyBreakdown");
   if (!el) return;
 
-  const names = [...new Set(sourceRecords.map((r) => r.employee.trim()).filter(Boolean))].sort();
+  const names = [
+    ...new Set(sourceRecords.map((r) => r.employee.trim()).filter(Boolean)),
+  ].sort();
   if (!names.length) {
     el.innerHTML = `<p class="empty-cell" style="padding:16px 0">No employee data for current filter.</p>`;
     return;
@@ -971,7 +1082,9 @@ function renderEmpCompanyBreakdown(sourceRecords = records) {
         c.refs++;
         c.units += Number(r.units || 0);
       });
-      const coEntries = [...coMap.entries()].sort((a, b) => b[1].units - a[1].units);
+      const coEntries = [...coMap.entries()].sort(
+        (a, b) => b[1].units - a[1].units,
+      );
       const maxU = Math.max(...coEntries.map(([, c]) => c.units), 1);
       const initial = name.charAt(0).toUpperCase();
 
@@ -982,7 +1095,7 @@ function renderEmpCompanyBreakdown(sourceRecords = records) {
         <div class="analytics-item">
           <div class="analytics-item-header">
             <span class="analytics-item-label" title="${escapeHtml(co)}">${escapeHtml(co)}</span>
-            <span class="analytics-item-meta"><strong>${c.refs}</strong> shipment${c.refs !== 1 ? 's' : ''} · <strong>${c.units.toLocaleString()}</strong> units</span>
+            <span class="analytics-item-meta"><strong>${c.refs}</strong> shipment${c.refs !== 1 ? "s" : ""} · <strong>${c.units.toLocaleString()}</strong> units</span>
           </div>
           <div class="analytics-bar-track">
             <div class="analytics-bar-fill" style="width:${pct}%"></div>
@@ -996,7 +1109,7 @@ function renderEmpCompanyBreakdown(sourceRecords = records) {
         <div class="emp-breakdown-header">
           <div class="emp-breakdown-avatar">${escapeHtml(initial)}</div>
           <span>${escapeHtml(name)}</span>
-          <span style="margin-left:auto;font-weight:400;color:var(--muted);font-size:12px;">${coEntries.length} compan${coEntries.length !== 1 ? 'ies' : 'y'}</span>
+          <span style="margin-left:auto;font-weight:400;color:var(--muted);font-size:12px;">${coEntries.length} compan${coEntries.length !== 1 ? "ies" : "y"}</span>
         </div>
         <div class="emp-breakdown-body">${rows}</div>
       </div>`;
@@ -1009,7 +1122,9 @@ function renderEmpAsinBreakdown(sourceRecords = records) {
   const el = $("empAsinBreakdown");
   if (!el) return;
 
-  const names = [...new Set(sourceRecords.map((r) => r.employee.trim()).filter(Boolean))].sort();
+  const names = [
+    ...new Set(sourceRecords.map((r) => r.employee.trim()).filter(Boolean)),
+  ].sort();
   if (!names.length) {
     el.innerHTML = `<p class="empty-cell" style="padding:16px 0">No employee data for current filter.</p>`;
     return;
@@ -1025,7 +1140,8 @@ function renderEmpAsinBreakdown(sourceRecords = records) {
         const perAsin = asins.length ? Math.round(units / asins.length) : units;
         asins.forEach((a) => {
           const key = (a.asin || "Unknown").trim();
-          if (!asinMap.has(key)) asinMap.set(key, { refs: 0, units: 0, submitted: 0 });
+          if (!asinMap.has(key))
+            asinMap.set(key, { refs: 0, units: 0, submitted: 0 });
           const entry = asinMap.get(key);
           entry.refs++;
           entry.units += perAsin;
@@ -1033,7 +1149,9 @@ function renderEmpAsinBreakdown(sourceRecords = records) {
         });
       });
 
-      const asinEntries = [...asinMap.entries()].sort((a, b) => b[1].units - a[1].units).slice(0, 10);
+      const asinEntries = [...asinMap.entries()]
+        .sort((a, b) => b[1].units - a[1].units)
+        .slice(0, 10);
       const initial = name.charAt(0).toUpperCase();
 
       if (!asinEntries.length) {
@@ -1056,7 +1174,7 @@ function renderEmpAsinBreakdown(sourceRecords = records) {
         <div class="analytics-item">
           <div class="analytics-item-header">
             <span class="analytics-item-label" title="${escapeHtml(asin)}">${escapeHtml(asin)}</span>
-            <span class="analytics-item-meta">${a.refs} record${a.refs !== 1 ? 's' : ''} · <strong>${subPct}%</strong> submitted</span>
+            <span class="analytics-item-meta">${a.refs} record${a.refs !== 1 ? "s" : ""} · <strong>${subPct}%</strong> submitted</span>
           </div>
           <div class="analytics-bar-track">
             <div class="analytics-bar-fill green" style="width:${pct}%"></div>
@@ -1070,7 +1188,7 @@ function renderEmpAsinBreakdown(sourceRecords = records) {
         <div class="emp-breakdown-header">
           <div class="emp-breakdown-avatar">${escapeHtml(initial)}</div>
           <span>${escapeHtml(name)}</span>
-          <span style="margin-left:auto;font-weight:400;color:var(--muted);font-size:12px;">${asinEntries.length} ASIN${asinEntries.length !== 1 ? 's' : ''}</span>
+          <span style="margin-left:auto;font-weight:400;color:var(--muted);font-size:12px;">${asinEntries.length} ASIN${asinEntries.length !== 1 ? "s" : ""}</span>
         </div>
         <div class="emp-breakdown-body">${rows}</div>
       </div>`;
@@ -1091,9 +1209,7 @@ function renderSelects() {
   const previous = $("reportEmployee").value || "all";
   // Merge fixed + any new names added via records
   const recordNames = records.map((r) => r.employee.trim()).filter(Boolean);
-  const names = [
-    ...new Set([...FIXED_EMPLOYEES, ...recordNames]),
-  ].sort();
+  const names = [...new Set([...FIXED_EMPLOYEES, ...recordNames])].sort();
 
   $("reportEmployee").innerHTML =
     `<option value="all">Entire Team</option>` +
@@ -1109,10 +1225,13 @@ function renderSelects() {
 
   // Update the datalist in Add Reference modal dynamically (new names not in FIXED_EMPLOYEES)
   const newNames = recordNames.filter((n) => !FIXED_EMPLOYEES.includes(n));
-  const existingFixed = $("employeeOptions").querySelectorAll("[data-fixed]").length;
+  const existingFixed =
+    $("employeeOptions").querySelectorAll("[data-fixed]").length;
   if (newNames.length) {
     // Remove old dynamic ones
-    $("employeeOptions").querySelectorAll("[data-dynamic]").forEach((el) => el.remove());
+    $("employeeOptions")
+      .querySelectorAll("[data-dynamic]")
+      .forEach((el) => el.remove());
     newNames.forEach((name) => {
       const opt = document.createElement("option");
       opt.value = name;
@@ -1130,7 +1249,6 @@ function renderAll() {
   renderLeaderboard();
   renderEmpTargetsGrid();
 }
-
 
 /**
  * Page Navigation - Fixed and enhanced to refresh views dynamically
@@ -1222,7 +1340,10 @@ function checkDuplicateRefNo() {
   }
 
   const isDuplicate = records.some(
-    (r) => r.refNo && r.refNo.trim().toLowerCase() === refNoVal && r.id !== currentId
+    (r) =>
+      r.refNo &&
+      r.refNo.trim().toLowerCase() === refNoVal &&
+      r.id !== currentId,
   );
 
   if (dupWarn) {
@@ -1256,19 +1377,28 @@ function addAsinRow(asin = "", status = "Pending") {
   `;
 
   const asinInput = row.querySelector(".asin-value");
-  const asinHint  = row.querySelector(".asin-valid-hint");
+  const asinHint = row.querySelector(".asin-valid-hint");
 
   function validateAsinInput() {
     const val = asinInput.value.trim().toUpperCase();
     asinInput.value = val;
-    if (!val) { asinInput.classList.remove("asin-ok","asin-error"); asinHint.className="asin-valid-hint"; asinHint.textContent=""; return; }
+    if (!val) {
+      asinInput.classList.remove("asin-ok", "asin-error");
+      asinHint.className = "asin-valid-hint";
+      asinHint.textContent = "";
+      return;
+    }
     const ok = /^[A-Z0-9]{10}$/.test(val);
     if (ok) {
-      asinInput.classList.add("asin-ok"); asinInput.classList.remove("asin-error");
-      asinHint.className="asin-valid-hint valid"; asinHint.textContent="\u2713 Valid ASIN";
+      asinInput.classList.add("asin-ok");
+      asinInput.classList.remove("asin-error");
+      asinHint.className = "asin-valid-hint valid";
+      asinHint.textContent = "\u2713 Valid ASIN";
     } else {
-      asinInput.classList.add("asin-error"); asinInput.classList.remove("asin-ok");
-      asinHint.className="asin-valid-hint invalid"; asinHint.textContent=`\u26a0 Must be 10 alphanumeric chars (${val.length}/10)`;
+      asinInput.classList.add("asin-error");
+      asinInput.classList.remove("asin-ok");
+      asinHint.className = "asin-valid-hint invalid";
+      asinHint.textContent = `\u26a0 Must be 10 alphanumeric chars (${val.length}/10)`;
     }
   }
 
@@ -1335,8 +1465,13 @@ function saveReference(event) {
   const invalidAsins = asins.filter((a) => !/^[A-Z0-9]{10}$/.test(a.asin));
   if (invalidAsins.length) {
     const invalidList = invalidAsins.map((a) => `"${a.asin}"`).join(", ");
-    if (!confirm(`Warning: The following ASIN(s) do not match Amazon's 10-character alphanumeric standard:\n\n${invalidList}\n\nDo you want to save anyway?`)) {
-      $("formError").textContent = `Invalid ASIN format: ${invalidList}. Amazon ASINs must be exactly 10 alphanumeric characters.`;
+    if (
+      !confirm(
+        `Warning: The following ASIN(s) do not match Amazon's 10-character alphanumeric standard:\n\n${invalidList}\n\nDo you want to save anyway?`,
+      )
+    ) {
+      $("formError").textContent =
+        `Invalid ASIN format: ${invalidList}. Amazon ASINs must be exactly 10 alphanumeric characters.`;
       return;
     }
   }
@@ -1462,21 +1597,26 @@ function deleteReference(id) {
 
 // --- BULK REPORT IMPORT ENGINE ---
 
+// --- BULK REPORT IMPORT ENGINE ---
+
 function parseBulkReport(rawText, defaultEmployee) {
   if (!rawText || !rawText.trim()) {
     return { error: "Please paste your report text from Google Sheets." };
   }
 
-  const lines = rawText
-    .split(/\r?\n/)
-    .map((l) => l.trim())
-    .filter(Boolean);
+  const lines = rawText.split(/\r?\n/);
   if (!lines.length) {
     return { error: "No content found in pasted report." };
   }
 
   const parsedRows = [];
   let headerFound = false;
+  let lastSeenDate = "";
+  let ignoredCount = 0;
+  let noCompanyCount = 0;
+
+  // Default column mapping according to standard sheet:
+  // Date | Reference No. | ASIN | Status | Units | Time | Company
   let colMap = {
     date: 0,
     ref: 1,
@@ -1487,41 +1627,75 @@ function parseBulkReport(rawText, defaultEmployee) {
     company: 6,
   };
 
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
+  const isLikelyDate = (str) => {
+    if (!str || typeof str !== "string") return false;
+    const s = str.trim();
+    if (!s) return false;
+    if (/^\d{1,2}\/\d{1,2}\/\d{2,4}$/.test(s)) return true;
+    if (/^\d{4}[-/.]\d{1,2}[-/.]\d{1,2}$/.test(s)) return true;
+    if (/^\d{1,2}[-.]\d{1,2}[-.]\d{2,4}$/.test(s)) return true;
+    return false;
+  };
 
+  const isHeaderLine = (lineLower) => {
+    let kwCount = 0;
+    if (lineLower.includes("date")) kwCount++;
+    if (lineLower.includes("ref")) kwCount++;
+    if (lineLower.includes("asin")) kwCount++;
+    if (lineLower.includes("status")) kwCount++;
+    if (lineLower.includes("unit")) kwCount++;
+    if (lineLower.includes("company") || lineLower.includes("store")) kwCount++;
+    if (lineLower.includes("time")) kwCount++;
+    return kwCount >= 2;
+  };
+
+  for (let i = 0; i < lines.length; i++) {
+    const rawLine = lines[i];
+    const line = rawLine.trim();
+
+    // 1. Skip completely blank lines
+    if (!line) {
+      continue;
+    }
+
+    // 2. Parse columns depending on delimiter
     let cols = [];
-    if (line.includes("\t")) {
-      cols = line.split("\t").map((c) => c.trim());
-    } else if (line.includes("|")) {
-      cols = line
+    if (rawLine.includes("\t")) {
+      cols = rawLine.split("\t").map((c) => c.trim());
+    } else if (rawLine.includes("|")) {
+      cols = rawLine
         .split("|")
         .map((c) => c.trim())
         .filter(
           (c, idx, arr) =>
             !(idx === 0 && c === "") && !(idx === arr.length - 1 && c === ""),
         );
-    } else if (line.includes(",")) {
-      cols = line.split(",").map((c) => c.trim().replace(/^["']|["']$/g, ""));
+    } else if (rawLine.includes(",")) {
+      cols = rawLine
+        .split(",")
+        .map((c) => c.trim().replace(/^["']|["']$/g, ""));
     } else {
-      cols = line.split(/\s{2,}/).map((c) => c.trim());
+      cols = rawLine.split(/\s{2,}/).map((c) => c.trim());
     }
 
-    if (!cols.length || cols.every((c) => !c || /^[-:]+$/.test(c))) {
+    // Skip markdown separator lines e.g. |---|---|
+    if (!cols.length || cols.every((c) => !c || /^[-:|+=_]+$/.test(c))) {
+      ignoredCount++;
       continue;
     }
 
+    const nonEmptyCols = cols.filter(Boolean);
+    if (!nonEmptyCols.length) {
+      ignoredCount++;
+      continue;
+    }
+
+    // 3. Header Detection (could appear at top or repeated between dates)
     const lineLower = line.toLowerCase();
-    if (
-      !headerFound &&
-      (lineLower.includes("date") ||
-        lineLower.includes("reference") ||
-        lineLower.includes("asin") ||
-        lineLower.includes("status"))
-    ) {
+    if (isHeaderLine(lineLower)) {
       headerFound = true;
       cols.forEach((col, idx) => {
-        const cLower = col.toLowerCase();
+        const cLower = col.toLowerCase().trim();
         if (cLower.includes("date")) colMap.date = idx;
         else if (cLower.includes("ref")) colMap.ref = idx;
         else if (cLower.includes("asin")) colMap.asin = idx;
@@ -1534,59 +1708,184 @@ function parseBulkReport(rawText, defaultEmployee) {
       continue;
     }
 
-    const rawDate = cols[colMap.date] || "";
-    const rawRef = cols[colMap.ref] || "";
-    const rawAsin = cols[colMap.asin] || "";
-    const rawStatus = cols[colMap.status] || "Pending";
-    const rawUnits = cols[colMap.units] || "1";
-    const rawCompany = cols[colMap.company] || "";
+    // 4. Date-Only Divider row detection (e.g. "10/12/26", "10/16/26" across the row)
+    if (nonEmptyCols.length === 1 && isLikelyDate(nonEmptyCols[0])) {
+      lastSeenDate = normalizeDate(nonEmptyCols[0]);
+      ignoredCount++;
+      continue;
+    }
+    if (isLikelyDate(cols[0]) && nonEmptyCols.length === 1) {
+      lastSeenDate = normalizeDate(cols[0]);
+      ignoredCount++;
+      continue;
+    }
 
-    if (!rawRef && !rawAsin) continue;
+    // 5. Extract fields based on colMap
+    let rawDate = (
+      cols[colMap.date] !== undefined ? cols[colMap.date] : ""
+    ).trim();
+    let rawRef = (
+      cols[colMap.ref] !== undefined ? cols[colMap.ref] : ""
+    ).trim();
+    let rawAsin = (
+      cols[colMap.asin] !== undefined ? cols[colMap.asin] : ""
+    ).trim();
+    let rawStatus = (
+      cols[colMap.status] !== undefined ? cols[colMap.status] : ""
+    ).trim();
+    let rawUnits = (
+      cols[colMap.units] !== undefined ? cols[colMap.units] : ""
+    ).trim();
+    let rawTime = (
+      colMap.time !== undefined && cols[colMap.time] !== undefined
+        ? cols[colMap.time]
+        : ""
+    ).trim();
+    let rawCompany = (
+      colMap.company !== undefined && cols[colMap.company] !== undefined
+        ? cols[colMap.company]
+        : ""
+    ).trim();
 
-    const date = normalizeDate(rawDate);
-    const refNo = String(rawRef).trim().toUpperCase();
-    const asin = String(rawAsin).trim().toUpperCase();
+    // Smart adjustment if sheet has 6 columns (no Time column: Date, Ref, ASIN, Status, Units, Company)
+    if ((!rawCompany || colMap.company >= cols.length) && rawTime) {
+      const isTimeFmt = /^\d{1,2}:\d{2}(:\d{2})?\s*(AM|PM)?$/i.test(rawTime);
+      if (!isTimeFmt) {
+        rawCompany = rawTime;
+        rawTime = "";
+      }
+    }
 
-    let status = "Pending";
-    const sLower = String(rawStatus).toLowerCase();
+    // 6. VALIDATION CHECKS (Valid row MUST have date, ref no, asin, status, units; company is optional)
+
+    // Check Reference Number:
+    if (!rawRef) {
+      ignoredCount++;
+      continue;
+    }
+    if (
+      isLikelyDate(rawRef) ||
+      /^(submitted|rejected|pending|date|asin|status|units|company)$/i.test(
+        rawRef,
+      )
+    ) {
+      ignoredCount++;
+      continue;
+    }
+
+    // Check ASIN:
+    if (!rawAsin) {
+      ignoredCount++;
+      continue;
+    }
+    if (
+      isLikelyDate(rawAsin) ||
+      /^(submitted|rejected|pending|date|reference|ref|status|units|company)$/i.test(
+        rawAsin,
+      )
+    ) {
+      ignoredCount++;
+      continue;
+    }
+    if (!/^[A-Z0-9\-_]{5,15}$/i.test(rawAsin)) {
+      ignoredCount++;
+      continue;
+    }
+
+    // Check Date:
+    let date = "";
+    if (isLikelyDate(rawDate)) {
+      date = normalizeDate(rawDate);
+      lastSeenDate = date;
+    } else if (lastSeenDate) {
+      date = lastSeenDate;
+    } else {
+      ignoredCount++;
+      continue;
+    }
+
+    // Check Status:
+    if (!rawStatus) {
+      ignoredCount++;
+      continue;
+    }
+    let status = "";
+    const sLower = rawStatus.toLowerCase();
     if (
       sLower.includes("sub") ||
       sLower.includes("done") ||
-      sLower.includes("approved")
+      sLower.includes("appr")
     ) {
       status = "Submitted";
     } else if (
       sLower.includes("rej") ||
       sLower.includes("fail") ||
-      sLower.includes("error")
+      sLower.includes("error") ||
+      sLower.includes("cancel")
     ) {
       status = "Rejected";
+    } else if (sLower.includes("pend")) {
+      status = "Pending";
+    } else {
+      ignoredCount++;
+      continue;
     }
 
-    const units = parseInt(String(rawUnits).replace(/[^0-9]/g, ""), 10) || 1;
-    const company = rawCompany || "";
+    // Check Units:
+    let units = 0;
+    if (rawUnits) {
+      const parsedNum = parseInt(rawUnits.replace(/[^0-9]/g, ""), 10);
+      if (!isNaN(parsedNum)) {
+        units = parsedNum;
+      } else if (status === "Rejected") {
+        units = 0;
+      } else {
+        ignoredCount++;
+        continue;
+      }
+    } else {
+      if (status === "Rejected") {
+        units = 0;
+      } else {
+        ignoredCount++;
+        continue;
+      }
+    }
+
+    // Company:
+    // User rule: Company can be blank/empty, especially for Rejected / Gated ASINs
+    const company =
+      rawCompany &&
+      rawCompany !== "-" &&
+      rawCompany !== "—" &&
+      rawCompany.toLowerCase() !== "n/a"
+        ? rawCompany
+        : "";
+    if (!company) {
+      noCompanyCount++;
+    }
 
     parsedRows.push({
       date,
-      refNo,
-      asin,
+      refNo: rawRef.toUpperCase(),
+      asin: rawAsin.toUpperCase(),
       status,
       units,
       company,
-      valid: Boolean(refNo && asin),
+      time: rawTime,
     });
   }
 
   if (!parsedRows.length) {
     return {
-      error: "Could not parse any valid rows. Please check the columns layout.",
+      error: `Could not find any valid shipment rows.${ignoredCount > 0 ? ` (Ignored ${ignoredCount} blank, divider, or incomplete rows).` : ""} Please check that your report has Date, Reference No, ASIN, Status, and Units columns.`,
+      ignoredCount,
     };
   }
 
   // Group by Reference Number
   const refGroups = new Map();
   parsedRows.forEach((row) => {
-    if (!row.refNo) return;
     if (!refGroups.has(row.refNo)) {
       refGroups.set(row.refNo, {
         refNo: row.refNo,
@@ -1602,7 +1901,7 @@ function parseBulkReport(rawText, defaultEmployee) {
     if (row.units > group.units) group.units = row.units;
     if (row.company && !group.company) group.company = row.company;
 
-    if (row.asin && !group.asins.some((a) => a.asin === row.asin)) {
+    if (!group.asins.some((a) => a.asin === row.asin)) {
       group.asins.push({
         id: uid(),
         asin: row.asin,
@@ -1614,7 +1913,9 @@ function parseBulkReport(rawText, defaultEmployee) {
 
   return {
     references: Array.from(refGroups.values()),
-    totalAsins: parsedRows.filter((r) => r.valid).length,
+    totalAsins: parsedRows.length,
+    ignoredCount,
+    noCompanyCount,
   };
 }
 
@@ -1638,7 +1939,11 @@ function previewBulkReport() {
   let existingCount = 0;
   let invalidAsinCount = 0;
   result.references.forEach((r) => {
-    if (records.some((rec) => rec.refNo && rec.refNo.toLowerCase() === r.refNo.toLowerCase())) {
+    if (
+      records.some(
+        (rec) => rec.refNo && rec.refNo.toLowerCase() === r.refNo.toLowerCase(),
+      )
+    ) {
       existingCount++;
     }
     r.asins.forEach((a) => {
@@ -1646,17 +1951,26 @@ function previewBulkReport() {
     });
   });
 
-  let warnMsg = "";
+  let infoMsg = "";
+  if (result.ignoredCount > 0) {
+    infoMsg += `<br><span style="color:#0284c7; font-size:12px; font-weight:600;">🧹 <strong>${result.ignoredCount}</strong> blank, date-divider, or incomplete row(s) automatically filtered and ignored.</span>`;
+  }
+  if (result.noCompanyCount > 0) {
+    infoMsg += `<br><span style="color:#64748b; font-size:12px; font-weight:500;">🏢 <strong>${result.noCompanyCount}</strong> ASIN(s) have no company specified (e.g. Gated/Copylisted) and were accepted as valid.</span>`;
+  }
   if (existingCount > 0) {
-    warnMsg += `<br><span style="color:#d97706; font-size:12px; font-weight:600;">⚠️ ${existingCount} Reference(s) already exist in portal (new ASINs will be merged into existing records).</span>`;
+    infoMsg += `<br><span style="color:#d97706; font-size:12px; font-weight:600;">⚠️ ${existingCount} Reference(s) already exist in portal (new ASINs will be merged into existing records).</span>`;
   }
   if (invalidAsinCount > 0) {
-    warnMsg += `<br><span style="color:#dc2626; font-size:12px; font-weight:600;">⚠️ ${invalidAsinCount} ASIN(s) do not match Amazon 10-character alphanumeric standard.</span>`;
+    infoMsg += `<br><span style="color:#dc2626; font-size:12px; font-weight:600;">⚠️ ${invalidAsinCount} ASIN(s) do not match Amazon 10-character alphanumeric standard.</span>`;
   }
 
   summary.hidden = false;
-  summary.className = (existingCount > 0 || invalidAsinCount > 0) ? "import-summary warning" : "import-summary success";
-  summary.innerHTML = `✓ Found <strong>${result.references.length} unique Reference(s)</strong> with <strong>${result.totalAsins} ASIN(s)</strong> for associate <strong>${escapeHtml(employee)}</strong>.${warnMsg}`;
+  summary.className =
+    existingCount > 0 || invalidAsinCount > 0
+      ? "import-summary warning"
+      : "import-summary success";
+  summary.innerHTML = `✓ Found <strong>${result.references.length} unique Reference(s)</strong> with <strong>${result.totalAsins} ASIN(s)</strong> for associate <strong>${escapeHtml(employee)}</strong>.${infoMsg}`;
 
   preview.innerHTML = `
     <div class="table-wrap">
@@ -1675,7 +1989,9 @@ function previewBulkReport() {
           ${result.references
             .map((r) => {
               const isDup = records.some(
-                (rec) => rec.refNo && rec.refNo.toLowerCase() === r.refNo.toLowerCase()
+                (rec) =>
+                  rec.refNo &&
+                  rec.refNo.toLowerCase() === r.refNo.toLowerCase(),
               );
               const dupBadge = isDup
                 ? `<span class="badge" style="background:rgba(245,158,11,0.15); color:#d97706; margin-left:6px; font-size:10px;">⚠ Duplicate (Merge)</span>`
@@ -1684,17 +2000,25 @@ function previewBulkReport() {
               const asinsHtml = r.asins
                 .map((a) => {
                   const isValidAsin = /^[A-Z0-9]{10}$/.test(a.asin);
+                  const statusPill =
+                    a.status === "Rejected"
+                      ? `<span style="color:#dc2626; font-size:10.5px; font-weight:700;">(Rejected)</span>`
+                      : `<span style="color:#10b981; font-size:10.5px; font-weight:600;">(${a.status})</span>`;
                   return isValidAsin
-                    ? `<span>${escapeHtml(a.asin)} (${a.status})</span>`
-                    : `<span style="color:#dc2626; font-weight:700;" title="Non-standard Amazon ASIN">${escapeHtml(a.asin)} ⚠ (${a.status})</span>`;
+                    ? `<span>${escapeHtml(a.asin)} ${statusPill}</span>`
+                    : `<span style="color:#dc2626; font-weight:700;" title="Non-standard Amazon ASIN">${escapeHtml(a.asin)} ⚠ ${statusPill}</span>`;
                 })
                 .join(", ");
+
+              const companyDisplay = r.company
+                ? escapeHtml(r.company)
+                : `<span style="color:#94a3b8; font-style:italic;" title="No company assigned (Gated/Copylisted)">— (None)</span>`;
 
               return `
               <tr>
                 <td>${escapeHtml(r.date)}</td>
                 <td><strong>${escapeHtml(r.refNo)}</strong> ${dupBadge}</td>
-                <td>${escapeHtml(r.company || "—")}</td>
+                <td>${companyDisplay}</td>
                 <td>${r.units}</td>
                 <td>${asinsHtml}</td>
                 <td>${statusBadge(statusOf(r))}</td>
@@ -1742,6 +2066,8 @@ function importBulkReport() {
         }
       });
       if (newRef.units > existing.units) existing.units = newRef.units;
+      if (newRef.company && !existing.company)
+        existing.company = newRef.company;
       existing.employee = employee;
       updated++;
     } else {
@@ -1765,7 +2091,13 @@ function importBulkReport() {
   $("importSummary").hidden = true;
   $("importPreview").innerHTML = "";
 
-  showToast(`Bulk report imported: ${created} created, ${updated} updated.`);
+  const ignoredText =
+    result.ignoredCount > 0
+      ? ` (${result.ignoredCount} junk/divider rows ignored)`
+      : "";
+  showToast(
+    `Bulk report imported: ${created} created, ${updated} updated${ignoredText}.`,
+  );
   setTimeout(() => navigate("references"), 500);
 }
 
@@ -1798,19 +2130,42 @@ function formatMarkdownTable(headers, rows) {
 }
 
 function generateReport() {
-  const dateInput = $("reportDate");
-  const date = dateInput ? normalizeDate(dateInput.value) : localDate();
-  const employee = $("reportEmployee").value || "all";
-  const selected = records.filter(
-    (r) =>
-      normalizeDate(r.date) === date &&
-      (employee === "all" || r.employee === employee),
-  );
+  const fromInput = $("reportDateFrom") || $("reportDate");
+  const toInput = $("reportDateTo") || $("reportDate");
+  const from =
+    fromInput && fromInput.value ? normalizeDate(fromInput.value) : "";
+  const to = toInput && toInput.value ? normalizeDate(toInput.value) : "";
+  const employee = $("reportEmployee")?.value || "all";
+
+  const selected = records.filter((r) => {
+    const d = normalizeDate(r.date);
+    if (from && d < from) return false;
+    if (to && d > to) return false;
+    if (employee !== "all" && r.employee !== employee) return false;
+    return true;
+  });
+
   const asins = selected.flatMap((r) => r.asins || []);
+
+  let dateLabel = "";
+  if (from && to && from === to) {
+    dateLabel = from;
+  } else if (from && to) {
+    dateLabel = `${from} → ${to}`;
+  } else if (from) {
+    dateLabel = `From ${from}`;
+  } else if (to) {
+    dateLabel = `Until ${to}`;
+  } else {
+    dateLabel = "All Time";
+  }
+
+  const isSingleDay = Boolean(from && to && from === to);
+  const periodTitle = isSingleDay ? "DAILY SHIPMENT REPORT" : "SHIPMENT REPORT";
   const title =
     employee === "all"
-      ? "TEAM DAILY SHIPMENT REPORT"
-      : `DAILY SHIPMENT REPORT — ${employee.toUpperCase()}`;
+      ? `TEAM ${periodTitle}`
+      : `${periodTitle} — ${employee.toUpperCase()}`;
 
   const submitted = asins.filter((a) => a.status === "Submitted").length;
   const rejected = asins.filter((a) => a.status === "Rejected").length;
@@ -1819,15 +2174,16 @@ function generateReport() {
   if (!selected.length) {
     $("reportOutput").value = [
       `# ${title}`,
-      `Date: ${date} | Associate: ${employee === "all" ? "Entire Team" : employee}`,
+      `Period: ${dateLabel} | Associate: ${employee === "all" ? "Entire Team" : employee}`,
       "",
-      "No shipment references recorded for this date.",
+      "No shipment references recorded for this date range.",
     ].join("\n");
     return;
   }
 
   const headers = [
     "#",
+    "Date",
     "Reference No.",
     "ASINs",
     "Company",
@@ -1838,15 +2194,23 @@ function generateReport() {
   ];
 
   const tableRows = selected
-    .sort((a, b) => a.refNo.localeCompare(b.refNo))
+    .sort((a, b) => {
+      const dComp = normalizeDate(b.date).localeCompare(normalizeDate(a.date));
+      return dComp !== 0 ? dComp : a.refNo.localeCompare(b.refNo);
+    })
     .map((r, index) => {
-      const rSub = (r.asins || []).filter((a) => a.status === "Submitted").length;
-      const rRej = (r.asins || []).filter((a) => a.status === "Rejected").length;
+      const rSub = (r.asins || []).filter(
+        (a) => a.status === "Submitted",
+      ).length;
+      const rRej = (r.asins || []).filter(
+        (a) => a.status === "Rejected",
+      ).length;
       const asinsText = (r.asins || []).map((a) => a.asin).join(", ") || "—";
       const status = statusOf(r);
 
       return [
         String(index + 1),
+        r.date,
         r.refNo,
         asinsText,
         r.company || "—",
@@ -1861,7 +2225,7 @@ function generateReport() {
 
   const lines = [
     `# ${title}`,
-    `**Date:** ${date}  |  **Associate:** ${employee === "all" ? "Entire Team" : employee}`,
+    `**Period:** ${dateLabel}  |  **Associate:** ${employee === "all" ? "Entire Team" : employee}`,
     `**Summary:** ${selected.length} References  |  ${units.toLocaleString()} Total Units  |  ${submitted} Submitted  |  ${rejected} Rejected`,
     "",
     tableMarkdown,
@@ -1898,29 +2262,62 @@ async function copyReport() {
 }
 
 function downloadPdfReport() {
-  const dateInput = $("reportDate");
-  const date = dateInput ? normalizeDate(dateInput.value) : localDate();
+  const fromInput = $("reportDateFrom") || $("reportDate");
+  const toInput = $("reportDateTo") || $("reportDate");
+  const from =
+    fromInput && fromInput.value ? normalizeDate(fromInput.value) : "";
+  const to = toInput && toInput.value ? normalizeDate(toInput.value) : "";
   const employee = $("reportEmployee")?.value || "all";
-  const selected = records.filter(
-    (r) =>
-      normalizeDate(r.date) === date &&
-      (employee === "all" || r.employee === employee),
-  );
+  const selected = records.filter((r) => {
+    const d = normalizeDate(r.date);
+    if (from && d < from) return false;
+    if (to && d > to) return false;
+    if (employee !== "all" && r.employee !== employee) return false;
+    return true;
+  });
 
   if (!selected.length) {
-    showToast("No shipment records available for this date to generate PDF.");
+    showToast(
+      "No shipment records available for this date range to generate PDF.",
+    );
     return;
   }
 
-  const allAsins = selected.flatMap((r) => r.asins || []);
+  let dateLabel = "";
+  if (from && to && from === to) {
+    dateLabel = from;
+  } else if (from && to) {
+    dateLabel = `${from} → ${to}`;
+  } else if (from) {
+    dateLabel = `From ${from}`;
+  } else if (to) {
+    dateLabel = `Until ${to}`;
+  } else {
+    dateLabel = "All Time";
+  }
+
+  const isSingleDay = Boolean(from && to && from === to);
+  const periodTitle = isSingleDay ? "DAILY SHIPMENT REPORT" : "SHIPMENT REPORT";
   const title =
     employee === "all"
-      ? "TEAM DAILY SHIPMENT REPORT"
-      : `DAILY SHIPMENT REPORT — ${employee.toUpperCase()}`;
+      ? `TEAM ${periodTitle}`
+      : `${periodTitle} — ${employee.toUpperCase()}`;
 
-  const submittedAsins = allAsins.filter((a) => a.status === "Submitted").length;
+  // ── Dynamic PDF file name ──
+  const empSlug =
+    employee === "all" ? "Entire_Team" : employee.trim().replace(/\s+/g, "_");
+  const pdfFileName = `TEKXS_${empSlug}`;
+
+  const allAsins = selected.flatMap((r) => r.asins || []);
+
+  const submittedAsins = allAsins.filter(
+    (a) => a.status === "Submitted",
+  ).length;
   const rejectedAsins = allAsins.filter((a) => a.status === "Rejected").length;
-  const totalUnitsAll = selected.reduce((sum, r) => sum + Number(r.units || 0), 0);
+  const totalUnitsAll = selected.reduce(
+    (sum, r) => sum + Number(r.units || 0),
+    0,
+  );
 
   // Calculate submitted units & rejected units
   const submittedUnitsAll = selected.reduce((sum, r) => {
@@ -1937,20 +2334,36 @@ function downloadPdfReport() {
   // Helper: build table rows HTML for a list of records
   function buildTableRows(recs) {
     return [...recs]
-      .sort((a, b) => a.refNo.localeCompare(b.refNo))
+      .sort((a, b) => {
+        const dComp = normalizeDate(b.date).localeCompare(
+          normalizeDate(a.date),
+        );
+        return dComp !== 0 ? dComp : a.refNo.localeCompare(b.refNo);
+      })
       .map((r, index) => {
-        const rSub = (r.asins || []).filter((a) => a.status === "Submitted").length;
-        const rRej = (r.asins || []).filter((a) => a.status === "Rejected").length;
+        const rSub = (r.asins || []).filter(
+          (a) => a.status === "Submitted",
+        ).length;
+        const rRej = (r.asins || []).filter(
+          (a) => a.status === "Rejected",
+        ).length;
         const rTotal = (r.asins || []).length || 1;
         const rSubUnits = Math.round(Number(r.units || 0) * (rSub / rTotal));
         const rRejUnits = Math.round(Number(r.units || 0) * (rRej / rTotal));
         const asinsList = (r.asins || []).map((a) => a.asin).join(", ") || "—";
         const st = statusOf(r);
-        const badgeClass = { Submitted: "badge-sub", Rejected: "badge-rej", Pending: "badge-pen", Mixed: "badge-mix" }[st] || "badge-pen";
+        const badgeClass =
+          {
+            Submitted: "badge-sub",
+            Rejected: "badge-rej",
+            Pending: "badge-pen",
+            Mixed: "badge-mix",
+          }[st] || "badge-pen";
 
         return `
         <tr>
           <td style="text-align:center;color:#64748b;font-weight:600;">${index + 1}</td>
+          <td style="font-size:8.5px;white-space:nowrap;color:#64748b;">${escapeHtml(r.date)}</td>
           <td><strong class="ref-code">${escapeHtml(r.refNo)}</strong></td>
           <td><span style="font-family:Consolas,monospace;font-size:9px;color:#0f172a;word-break:break-all;">${escapeHtml(asinsList)}</span></td>
           <td>${escapeHtml(r.company || "—")}</td>
@@ -1972,6 +2385,7 @@ function downloadPdfReport() {
     <thead>
       <tr>
         <th style="width:24px;text-align:center;">#</th>
+        <th>Date</th>
         <th>Reference No.</th>
         <th>ASINs</th>
         <th>Company</th>
@@ -1998,8 +2412,15 @@ function downloadPdfReport() {
       empGroups.get(r.employee).push(r);
     });
 
-    const sortedEmp = [...empGroups.entries()].sort((a, b) => a[0].localeCompare(b[0]));
-    const maxEmpUnits = Math.max(...sortedEmp.map(([, recs]) => recs.reduce((s, r) => s + Number(r.units || 0), 0)), 1);
+    const sortedEmp = [...empGroups.entries()].sort((a, b) =>
+      a[0].localeCompare(b[0]),
+    );
+    const maxEmpUnits = Math.max(
+      ...sortedEmp.map(([, recs]) =>
+        recs.reduce((s, r) => s + Number(r.units || 0), 0),
+      ),
+      1,
+    );
 
     // ── Employee Summary Cards Grid ──
     let cardsHtml = `<div class="emp-cards-grid">`;
@@ -2009,12 +2430,16 @@ function downloadPdfReport() {
       const eRej = empAsins.filter((a) => a.status === "Rejected").length;
       const eUnits = empRecs.reduce((s, r) => s + Number(r.units || 0), 0);
       const eSubUnits = empRecs.reduce((s, r) => {
-        const rSub = (r.asins || []).filter((a) => a.status === "Submitted").length;
+        const rSub = (r.asins || []).filter(
+          (a) => a.status === "Submitted",
+        ).length;
         const rTotal = (r.asins || []).length || 1;
         return s + Math.round(Number(r.units || 0) * (rSub / rTotal));
       }, 0);
       const eRejUnits = empRecs.reduce((s, r) => {
-        const rRej = (r.asins || []).filter((a) => a.status === "Rejected").length;
+        const rRej = (r.asins || []).filter(
+          (a) => a.status === "Rejected",
+        ).length;
         const rTotal = (r.asins || []).length || 1;
         return s + Math.round(Number(r.units || 0) * (rRej / rTotal));
       }, 0);
@@ -2047,12 +2472,16 @@ function downloadPdfReport() {
       const eRej = empAsins.filter((a) => a.status === "Rejected").length;
       const eUnits = empRecs.reduce((s, r) => s + Number(r.units || 0), 0);
       const eSubUnits = empRecs.reduce((s, r) => {
-        const rSub = (r.asins || []).filter((a) => a.status === "Submitted").length;
+        const rSub = (r.asins || []).filter(
+          (a) => a.status === "Submitted",
+        ).length;
         const rTotal = (r.asins || []).length || 1;
         return s + Math.round(Number(r.units || 0) * (rSub / rTotal));
       }, 0);
       const eRejUnits = empRecs.reduce((s, r) => {
-        const rRej = (r.asins || []).filter((a) => a.status === "Rejected").length;
+        const rRej = (r.asins || []).filter(
+          (a) => a.status === "Rejected",
+        ).length;
         const rTotal = (r.asins || []).length || 1;
         return s + Math.round(Number(r.units || 0) * (rRej / rTotal));
       }, 0);
@@ -2078,7 +2507,7 @@ function downloadPdfReport() {
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>ShipTrack_Daily_Report_${date}</title>
+  <title>${pdfFileName}</title>
   <style>
     @page { size: A4 landscape; margin: 10mm 12mm; }
     * { box-sizing: border-box; }
@@ -2092,7 +2521,7 @@ function downloadPdfReport() {
       border-bottom: 2px solid #0084ff; padding-bottom: 12px; margin-bottom: 14px;
     }
     .brand-box { display: flex; align-items: center; gap: 10px; }
-    .brand-logo-print { max-height: 28px; width: auto; }
+    .brand-logo-print { max-height: 52px; width: auto; display: block; }
     .brand-info h2 { margin: 0; font-size: 18px; font-weight: 800; color: #080e1a; }
     .brand-info p { margin: 2px 0 0; font-size: 8px; font-weight: 700; color: #0084ff; letter-spacing: 1.4px; }
     .meta-box { text-align: right; }
@@ -2166,7 +2595,7 @@ function downloadPdfReport() {
     </div>
     <div class="meta-box">
       <div class="meta-title">${escapeHtml(title)}</div>
-      <p class="meta-desc">Date: <strong>${escapeHtml(date)}</strong> | Associate: <strong>${escapeHtml(employee === "all" ? "Entire Team" : employee)}</strong></p>
+      <p class="meta-desc">Period: <strong>${escapeHtml(dateLabel)}</strong> | Associate: <strong>${escapeHtml(employee === "all" ? "Entire Team" : employee)}</strong></p>
     </div>
   </div>
 
@@ -2221,6 +2650,16 @@ function downloadPdfReport() {
   doc.close();
 
   showToast("Opening PDF Print Dialog...");
+
+  // ── Set main document title so browser uses it as PDF filename ──
+  const _origTitle = document.title;
+  document.title = pdfFileName;
+
+  const restoreTitle = () => {
+    document.title = _origTitle;
+    printIframe.contentWindow.removeEventListener("afterprint", restoreTitle);
+  };
+  printIframe.contentWindow.addEventListener("afterprint", restoreTitle);
 
   setTimeout(() => {
     printIframe.contentWindow.focus();
@@ -2305,6 +2744,10 @@ function init() {
   if ($("fromDate")) $("fromDate").value = "";
   if ($("toDate")) $("toDate").value = "";
   if ($("reportDate")) $("reportDate").value = localDate();
+  // Report date range defaults → today
+  const _today = localDate();
+  if ($("reportDateFrom")) $("reportDateFrom").value = _today;
+  if ($("reportDateTo")) $("reportDateTo").value = _today;
 
   document.querySelectorAll("[data-page]").forEach((button) => {
     button.addEventListener("click", () => navigate(button.dataset.page));
@@ -2327,24 +2770,37 @@ function init() {
   // ── Dashboard Filter Listeners ──
   document.querySelectorAll("[data-dash-preset]").forEach((btn) => {
     btn.addEventListener("click", () => {
-      document.querySelectorAll("[data-dash-preset]").forEach((b) => b.classList.remove("active"));
+      document
+        .querySelectorAll("[data-dash-preset]")
+        .forEach((b) => b.classList.remove("active"));
       btn.classList.add("active");
-      applyDatePreset(btn.dataset.dashPreset, "fromDate", "toDate", renderDashboard);
+      applyDatePreset(
+        btn.dataset.dashPreset,
+        "fromDate",
+        "toDate",
+        renderDashboard,
+      );
     });
   });
 
   $("fromDate")?.addEventListener("change", () => {
-    document.querySelectorAll("[data-dash-preset]").forEach((b) => b.classList.remove("active"));
+    document
+      .querySelectorAll("[data-dash-preset]")
+      .forEach((b) => b.classList.remove("active"));
     renderDashboard();
   });
   $("toDate")?.addEventListener("change", () => {
-    document.querySelectorAll("[data-dash-preset]").forEach((b) => b.classList.remove("active"));
+    document
+      .querySelectorAll("[data-dash-preset]")
+      .forEach((b) => b.classList.remove("active"));
     renderDashboard();
   });
   $("resetDates")?.addEventListener("click", () => {
     $("fromDate").value = "";
     $("toDate").value = "";
-    document.querySelectorAll("[data-dash-preset]").forEach((b) => b.classList.remove("active"));
+    document
+      .querySelectorAll("[data-dash-preset]")
+      .forEach((b) => b.classList.remove("active"));
     document.querySelector("[data-dash-preset='all']")?.classList.add("active");
     renderDashboard();
   });
@@ -2352,18 +2808,29 @@ function init() {
   // ── Reference Tracking Filter Listeners ──
   document.querySelectorAll("[data-ref-preset]").forEach((btn) => {
     btn.addEventListener("click", () => {
-      document.querySelectorAll("[data-ref-preset]").forEach((b) => b.classList.remove("active"));
+      document
+        .querySelectorAll("[data-ref-preset]")
+        .forEach((b) => b.classList.remove("active"));
       btn.classList.add("active");
-      applyDatePreset(btn.dataset.refPreset, "refFilterFrom", "refFilterTo", renderReferences);
+      applyDatePreset(
+        btn.dataset.refPreset,
+        "refFilterFrom",
+        "refFilterTo",
+        renderReferences,
+      );
     });
   });
 
   $("refFilterFrom")?.addEventListener("change", () => {
-    document.querySelectorAll("[data-ref-preset]").forEach((b) => b.classList.remove("active"));
+    document
+      .querySelectorAll("[data-ref-preset]")
+      .forEach((b) => b.classList.remove("active"));
     renderReferences();
   });
   $("refFilterTo")?.addEventListener("change", () => {
-    document.querySelectorAll("[data-ref-preset]").forEach((b) => b.classList.remove("active"));
+    document
+      .querySelectorAll("[data-ref-preset]")
+      .forEach((b) => b.classList.remove("active"));
     renderReferences();
   });
   $("refFilterEmployee")?.addEventListener("change", renderReferences);
@@ -2380,7 +2847,9 @@ function init() {
     if ($("refFilterStatus")) $("refFilterStatus").value = "";
     if ($("refFilterSort")) $("refFilterSort").value = "date_desc";
     if ($("referenceSearch")) $("referenceSearch").value = "";
-    document.querySelectorAll("[data-ref-preset]").forEach((b) => b.classList.remove("active"));
+    document
+      .querySelectorAll("[data-ref-preset]")
+      .forEach((b) => b.classList.remove("active"));
     document.querySelector("[data-ref-preset='all']")?.classList.add("active");
     renderReferences();
     showToast("Reference filters reset.");
@@ -2389,18 +2858,29 @@ function init() {
   // ── Employee Performance Filter Listeners ──
   document.querySelectorAll("[data-emp-preset]").forEach((btn) => {
     btn.addEventListener("click", () => {
-      document.querySelectorAll("[data-emp-preset]").forEach((b) => b.classList.remove("active"));
+      document
+        .querySelectorAll("[data-emp-preset]")
+        .forEach((b) => b.classList.remove("active"));
       btn.classList.add("active");
-      applyDatePreset(btn.dataset.empPreset, "empFilterFrom", "empFilterTo", renderEmployees);
+      applyDatePreset(
+        btn.dataset.empPreset,
+        "empFilterFrom",
+        "empFilterTo",
+        renderEmployees,
+      );
     });
   });
 
   $("empFilterFrom")?.addEventListener("change", () => {
-    document.querySelectorAll("[data-emp-preset]").forEach((b) => b.classList.remove("active"));
+    document
+      .querySelectorAll("[data-emp-preset]")
+      .forEach((b) => b.classList.remove("active"));
     renderEmployees();
   });
   $("empFilterTo")?.addEventListener("change", () => {
-    document.querySelectorAll("[data-emp-preset]").forEach((b) => b.classList.remove("active"));
+    document
+      .querySelectorAll("[data-emp-preset]")
+      .forEach((b) => b.classList.remove("active"));
     renderEmployees();
   });
   $("empFilterCompany")?.addEventListener("change", renderEmployees);
@@ -2413,7 +2893,9 @@ function init() {
     if ($("empFilterCompany")) $("empFilterCompany").value = "";
     if ($("empFilterSort")) $("empFilterSort").value = "units_desc";
     if ($("empSearchInput")) $("empSearchInput").value = "";
-    document.querySelectorAll("[data-emp-preset]").forEach((b) => b.classList.remove("active"));
+    document
+      .querySelectorAll("[data-emp-preset]")
+      .forEach((b) => b.classList.remove("active"));
     document.querySelector("[data-emp-preset='all']")?.classList.add("active");
     renderEmployees();
     showToast("Employee filters reset.");
@@ -2428,6 +2910,52 @@ function init() {
   $("generateReport")?.addEventListener("click", generateReport);
   $("reportDate")?.addEventListener("change", generateReport);
   $("reportEmployee")?.addEventListener("change", generateReport);
+
+  // ── Report Date Range Preset Buttons ──
+  document.querySelectorAll("[data-rep-preset]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      document
+        .querySelectorAll("[data-rep-preset]")
+        .forEach((b) => b.classList.remove("active"));
+      btn.classList.add("active");
+      applyDatePreset(
+        btn.dataset.repPreset,
+        "reportDateFrom",
+        "reportDateTo",
+        generateReport,
+      );
+    });
+  });
+
+  // ── Report Date Range From / To change listeners ──
+  $("reportDateFrom")?.addEventListener("change", () => {
+    document
+      .querySelectorAll("[data-rep-preset]")
+      .forEach((b) => b.classList.remove("active"));
+    generateReport();
+  });
+  $("reportDateTo")?.addEventListener("change", () => {
+    document
+      .querySelectorAll("[data-rep-preset]")
+      .forEach((b) => b.classList.remove("active"));
+    generateReport();
+  });
+
+  // ── Reset Report Dates ──
+  $("resetReportDates")?.addEventListener("click", () => {
+    const t = localDate();
+    if ($("reportDateFrom")) $("reportDateFrom").value = t;
+    if ($("reportDateTo")) $("reportDateTo").value = t;
+    document
+      .querySelectorAll("[data-rep-preset]")
+      .forEach((b) => b.classList.remove("active"));
+    document
+      .querySelector("[data-rep-preset='today']")
+      ?.classList.add("active");
+    generateReport();
+    showToast("Report dates reset to today.");
+  });
+
   $("copyReport")?.addEventListener("click", copyReport);
   $("downloadPdf")?.addEventListener("click", downloadPdfReport);
   $("exportCsv")?.addEventListener("click", exportCsv);

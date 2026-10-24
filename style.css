@@ -1565,17 +1565,45 @@ td:first-child {
   min-width: 180px;
 }
 
-/* ── Daily Reports ── */
+/* ── Daily & Periodic Reports ── */
 .report-controls {
-  padding: 22px 24px;
+  padding: 20px 24px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  margin-bottom: 22px;
+}
+
+.report-controls-grid {
   display: flex;
   align-items: flex-end;
-  gap: 16px;
+  gap: 14px;
   flex-wrap: wrap;
 }
 
-.report-controls input, .report-controls select {
-  min-width: 190px;
+.report-controls-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  min-width: 155px;
+  flex: 1;
+}
+
+.report-controls-grid input,
+.report-controls-grid select {
+  width: 100%;
+}
+
+.report-action-buttons {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .report-output {

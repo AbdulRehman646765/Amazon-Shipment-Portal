@@ -670,13 +670,13 @@ Date | Reference No. | ASIN | Status | Units | Time | Company
             ></textarea>
 
             <div class="import-help">
-              <strong>Expected columns</strong>
+              <strong>Expected columns & Smart Cleaner</strong>
               <p>
                 Date · Reference No. · ASIN · Status · Units · Time · Company
               </p>
               <p>
-                Google Sheets se directly copy-paste kar sakte ho. Markdown
-                table format bhi supported hoga.
+                ✓ <strong>Smart Auto-Clean:</strong> Pure month ya all-time data mein se khali rows (blanks), darmiyani date divider rows (e.g. <code>10/12/26</code>), aur incomplete rows automatically ignore ho jayengi.<br />
+                ✓ <strong>Gated / Copylisted ASINs:</strong> Agar kisi row ki Company na bhi ho (jaise Rejected ASINs), wo row bhi valid tasleem ki jayegi.
               </p>
             </div>
 
@@ -699,21 +699,46 @@ Date | Reference No. | ASIN | Status | Units | Time | Company
         <section class="page" id="reportsPage">
           <div class="section-heading">
             <div>
-              <h2>Daily Reports</h2>
-              <p>Generate a report ready to copy into ClickUp.</p>
+              <h2>Shipment Reports &amp; Exports</h2>
+              <p>Generate daily, weekly, monthly or custom date range reports ready for ClickUp or PDF download.</p>
             </div>
           </div>
           <div class="panel report-controls">
-            <label>Report Date <input type="date" id="reportDate" /></label>
-            <label
-              >Employee
-              <select id="reportEmployee">
-                <option value="all">Entire Team</option>
-              </select>
-            </label>
-            <button class="primary-btn" id="generateReport">
-              Generate Report
-            </button>
+            <!-- Quick Presets -->
+            <div class="filter-presets" style="margin-bottom: 16px;">
+              <span class="filter-presets-label">Quick Presets:</span>
+              <button type="button" class="preset-btn active" data-rep-preset="today">Today</button>
+              <button type="button" class="preset-btn" data-rep-preset="yesterday">Yesterday</button>
+              <button type="button" class="preset-btn" data-rep-preset="7days">Last 7 Days</button>
+              <button type="button" class="preset-btn" data-rep-preset="thisMonth">This Month</button>
+              <button type="button" class="preset-btn" data-rep-preset="all">All Time</button>
+            </div>
+
+            <!-- Date Range (From / To) & Employee Filter -->
+            <div class="report-controls-grid">
+              <label
+                >From Date
+                <input type="date" id="reportDateFrom" />
+              </label>
+              <label
+                >To Date
+                <input type="date" id="reportDateTo" />
+              </label>
+              <label
+                >Employee
+                <select id="reportEmployee">
+                  <option value="all">Entire Team</option>
+                </select>
+              </label>
+              <div class="report-action-buttons">
+                <button class="primary-btn" id="generateReport">
+                  Generate Report
+                </button>
+                <button class="secondary-btn" id="resetReportDates" type="button">
+                  Reset
+                </button>
+              </div>
+            </div>
           </div>
           <div class="panel">
             <div class="panel-heading">
