@@ -2204,3 +2204,117 @@ input.asin-ok   { border-color: #10b981 !important; }
   .leaderboard-grid { grid-template-columns: 1fr; }
 }
 
+/* ---------------------------------? */
+
+
+/* Shift Timing Controls */
+.shift-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 0 0 18px;
+}
+
+#activeShiftLabel {
+  font-size: 13px;
+  color: var(--muted, #64748b);
+  font-weight: 600;
+}
+
+.shift-popup-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.30);
+  z-index: 9999;
+  display: none;
+  justify-content: flex-end;
+}
+
+.shift-popup-overlay.open {
+  display: flex;
+}
+
+.shift-popup {
+  width: min(360px, 100%);
+  height: 100%;
+  background: var(--panel, #fff);
+  color: var(--text, #1e293b);
+  padding: 26px;
+  box-sizing: border-box;
+  box-shadow: -10px 0 35px rgba(0, 0, 0, 0.12);
+  overflow-y: auto;
+  animation: shiftSlideIn 0.22s ease-out;
+}
+
+.shift-popup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 28px;
+}
+
+.shift-popup-header h3 {
+  margin: 0 0 7px;
+  font-size: 19px;
+}
+
+.shift-popup-header p,
+.shift-help {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--muted, #64748b);
+}
+
+.shift-close-btn {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 28px;
+  cursor: pointer;
+}
+
+.shift-popup label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  margin: 18px 0 8px;
+}
+
+.shift-popup input[type="time"] {
+  width: 100%;
+  padding: 12px;
+  box-sizing: border-box;
+  border: 1px solid var(--border, #dbe2ea);
+  border-radius: 9px;
+  background: var(--bg, #fff);
+  color: inherit;
+  font: inherit;
+}
+
+.shift-help {
+  margin-top: 12px;
+}
+
+.shift-popup-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 28px;
+}
+
+@keyframes shiftSlideIn {
+  from { transform: translateX(25px); opacity: 0.6; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@media (max-width: 480px) {
+  .shift-popup { padding: 20px; }
+}
+
+#openShiftSettings:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  pointer-events: none;
+}

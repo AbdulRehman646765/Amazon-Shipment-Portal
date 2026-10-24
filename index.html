@@ -242,7 +242,9 @@
                 <h3>🏆 Leaderboard & Targets</h3>
                 <p>Top performers for today, this week, and all time</p>
               </div>
-              <button class="text-btn" data-page="employees">Manage Targets →</button>
+              <button class="text-btn" data-page="employees">
+                Manage Targets →
+              </button>
             </div>
             <div id="leaderboardGrid" class="leaderboard-grid"></div>
           </section>
@@ -446,12 +448,21 @@
           </div>
 
           <!-- ── Employee Targets Panel ── -->
-          <div class="panel analytics-panel collapsible-panel open" id="empTargetsPanel" style="margin-bottom: 20px">
-            <div class="panel-heading collapsible-trigger" onclick="togglePanel('empTargetsPanel')">
+          <div
+            class="panel analytics-panel collapsible-panel open"
+            id="empTargetsPanel"
+            style="margin-bottom: 20px"
+          >
+            <div
+              class="panel-heading collapsible-trigger"
+              onclick="togglePanel('empTargetsPanel')"
+            >
               <div style="display: flex; align-items: center">
                 <div>
                   <h3 style="margin: 0">🎯 Daily Targets</h3>
-                  <p style="margin: 2px 0 0">Set each associate's daily unit target for progress tracking</p>
+                  <p style="margin: 2px 0 0">
+                    Set each associate's daily unit target for progress tracking
+                  </p>
                 </div>
                 <span class="collapse-badge">Click to manage</span>
               </div>
@@ -459,9 +470,21 @@
             </div>
             <div class="collapsible-body">
               <div id="empTargetsGrid" class="emp-targets-grid"></div>
-              <div style="padding: 12px 16px 4px; display:flex; gap:10px;">
-                <button class="primary-btn" id="saveTargetsBtn">💾 Save Targets</button>
-                <span id="targetsSavedMsg" style="color: var(--green); font-weight:600; align-self:center; font-size:13px; opacity:0;">✓ Targets saved!</span>
+              <div style="padding: 12px 16px 4px; display: flex; gap: 10px">
+                <button class="primary-btn" id="saveTargetsBtn">
+                  💾 Save Targets
+                </button>
+                <span
+                  id="targetsSavedMsg"
+                  style="
+                    color: var(--green);
+                    font-weight: 600;
+                    align-self: center;
+                    font-size: 13px;
+                    opacity: 0;
+                  "
+                  >✓ Targets saved!</span
+                >
               </div>
             </div>
           </div>
@@ -675,8 +698,13 @@ Date | Reference No. | ASIN | Status | Units | Time | Company
                 Date · Reference No. · ASIN · Status · Units · Time · Company
               </p>
               <p>
-                ✓ <strong>Smart Auto-Clean:</strong> Pure month ya all-time data mein se khali rows (blanks), darmiyani date divider rows (e.g. <code>10/12/26</code>), aur incomplete rows automatically ignore ho jayengi.<br />
-                ✓ <strong>Gated / Copylisted ASINs:</strong> Agar kisi row ki Company na bhi ho (jaise Rejected ASINs), wo row bhi valid tasleem ki jayegi.
+                ✓ <strong>Smart Auto-Clean:</strong> Pure month ya all-time data
+                mein se khali rows (blanks), darmiyani date divider rows (e.g.
+                <code>10/12/26</code>), aur incomplete rows automatically ignore
+                ho jayengi.<br />
+                ✓ <strong>Gated / Copylisted ASINs:</strong> Agar kisi row ki
+                Company na bhi ho (jaise Rejected ASINs), wo row bhi valid
+                tasleem ki jayegi.
               </p>
             </div>
 
@@ -700,18 +728,103 @@ Date | Reference No. | ASIN | Status | Units | Time | Company
           <div class="section-heading">
             <div>
               <h2>Shipment Reports &amp; Exports</h2>
-              <p>Generate daily, weekly, monthly or custom date range reports ready for ClickUp or PDF download.</p>
+              <p>
+                Generate daily, weekly, monthly or custom date range reports
+                ready for ClickUp or PDF download.
+              </p>
             </div>
           </div>
           <div class="panel report-controls">
             <!-- Quick Presets -->
-            <div class="filter-presets" style="margin-bottom: 16px;">
+            <div class="filter-presets" style="margin-bottom: 16px">
               <span class="filter-presets-label">Quick Presets:</span>
-              <button type="button" class="preset-btn active" data-rep-preset="today">Today</button>
-              <button type="button" class="preset-btn" data-rep-preset="yesterday">Yesterday</button>
-              <button type="button" class="preset-btn" data-rep-preset="7days">Last 7 Days</button>
-              <button type="button" class="preset-btn" data-rep-preset="thisMonth">This Month</button>
-              <button type="button" class="preset-btn" data-rep-preset="all">All Time</button>
+              <button
+                type="button"
+                class="preset-btn active"
+                data-rep-preset="today"
+              >
+                Today
+              </button>
+              <button
+                type="button"
+                class="preset-btn"
+                data-rep-preset="yesterday"
+              >
+                Yesterday
+              </button>
+              <button type="button" class="preset-btn" data-rep-preset="7days">
+                Last 7 Days
+              </button>
+              <button
+                type="button"
+                class="preset-btn"
+                data-rep-preset="thisMonth"
+              >
+                This Month
+              </button>
+              <button type="button" class="preset-btn" data-rep-preset="all">
+                All Time
+              </button>
+            </div>
+
+            <!-- Shift Timing Button -->
+            <div class="shift-toolbar">
+              <button
+                type="button"
+                id="openShiftSettings"
+                class="secondary-btn"
+                disabled
+                style="cursor: not-allowed;"
+              >
+                🕒 Shift Timing
+              </button>
+              <span id="activeShiftLabel">Shift: Not Set</span>
+            </div>
+
+            <!-- Shift Timing Popup -->
+            <div id="shiftPopupOverlay" class="shift-popup-overlay">
+              <div class="shift-popup">
+                <div class="shift-popup-header">
+                  <div>
+                    <h3>Configure Job Shift</h3>
+                    <p>Set your working hours for shipment reports.</p>
+                  </div>
+                  <button
+                    type="button"
+                    id="closeShiftSettings"
+                    class="shift-close-btn"
+                  >
+                    &times;
+                  </button>
+                </div>
+
+                <label for="shiftStartTime">Shift Start Time</label>
+                <input type="time" id="shiftStartTime" value="23:00" />
+
+                <label for="shiftEndTime">Shift End Time</label>
+                <input type="time" id="shiftEndTime" value="07:00" />
+
+                <p class="shift-help">
+                  Example: 11:00 PM to 7:00 AM. Overnight shifts are supported.
+                </p>
+
+                <div class="shift-popup-actions">
+                  <button
+                    type="button"
+                    id="cancelShiftSettings"
+                    class="secondary-btn"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    id="saveShiftSettings"
+                    class="primary-btn"
+                  >
+                    Save Shift
+                  </button>
+                </div>
+              </div>
             </div>
 
             <!-- Date Range (From / To) & Employee Filter -->
@@ -734,7 +847,11 @@ Date | Reference No. | ASIN | Status | Units | Time | Company
                 <button class="primary-btn" id="generateReport">
                   Generate Report
                 </button>
-                <button class="secondary-btn" id="resetReportDates" type="button">
+                <button
+                  class="secondary-btn"
+                  id="resetReportDates"
+                  type="button"
+                >
                   Reset
                 </button>
               </div>
@@ -766,24 +883,48 @@ Date | Reference No. | ASIN | Status | Units | Time | Company
             <div class="panel-heading">
               <div>
                 <h3>Data Backup &amp; Restore</h3>
-                <p>Export or restore all portal data for safe multi-device transfer.</p>
+                <p>
+                  Export or restore all portal data for safe multi-device
+                  transfer.
+                </p>
               </div>
             </div>
             <div class="backup-actions">
               <div class="backup-group">
                 <p class="backup-label">📤 Export</p>
                 <button class="secondary-btn" id="exportCsv">Export CSV</button>
-                <button class="primary-btn" id="downloadJson">⬇ Download JSON Backup</button>
+                <button class="primary-btn" id="downloadJson">
+                  ⬇ Download JSON Backup
+                </button>
               </div>
               <div class="backup-group">
                 <p class="backup-label">📥 Restore</p>
-                <label class="file-upload-btn secondary-btn" for="restoreJsonFile">📂 Upload JSON Backup</label>
-                <input type="file" id="restoreJsonFile" accept=".json" style="display:none" />
-                <span id="restoreFileName" style="font-size:12px; color:var(--muted); align-self:center;">No file chosen</span>
+                <label
+                  class="file-upload-btn secondary-btn"
+                  for="restoreJsonFile"
+                  >📂 Upload JSON Backup</label
+                >
+                <input
+                  type="file"
+                  id="restoreJsonFile"
+                  accept=".json"
+                  style="display: none"
+                />
+                <span
+                  id="restoreFileName"
+                  style="
+                    font-size: 12px;
+                    color: var(--muted);
+                    align-self: center;
+                  "
+                  >No file chosen</span
+                >
               </div>
               <div class="backup-group">
                 <p class="backup-label">⚙️ Danger Zone</p>
-                <button class="secondary-btn" id="clearDemo">Reset Demo Data</button>
+                <button class="secondary-btn" id="clearDemo">
+                  Reset Demo Data
+                </button>
               </div>
             </div>
           </div>
@@ -808,7 +949,17 @@ Date | Reference No. | ASIN | Status | Units | Time | Company
             <label
               >Reference No. *
               <input id="refNo" required placeholder="e.g. REQ-2026-1645" />
-              <span id="refNoDuplicateWarning" style="display:none; color:#f43f5e; font-size:11px; font-weight:600; margin-top:4px;">⚠ This Reference No. already exists!</span>
+              <span
+                id="refNoDuplicateWarning"
+                style="
+                  display: none;
+                  color: #f43f5e;
+                  font-size: 11px;
+                  font-weight: 600;
+                  margin-top: 4px;
+                "
+                >⚠ This Reference No. already exists!</span
+              >
             </label>
             <label
               >Shipment Date *

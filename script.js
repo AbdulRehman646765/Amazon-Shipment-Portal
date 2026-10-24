@@ -3026,3 +3026,103 @@ if (document.readyState === "loading") {
 } else {
   init();
 }
+
+///////////////////////////
+
+
+/* ==================================
+   SHIFT TIMING SETTINGS
+================================== */
+
+const SHIFT_STORAGE_KEY = "medicore_shipment_shift_v1";
+
+function getSavedShift() {
+  try {
+    const saved = localStorage.getItem(SHIFT_STORAGE_KEY);
+
+    return saved
+      ? JSON.parse(saved)
+      : { start: "23:00", end: "07:00" };
+  } catch {
+    return { start: "23:00", end: "07:00" };
+  }
+}
+
+function formatShiftTime(time) {
+  const [hours, minutes] = time.split(":").map(Number);
+  const suffix = hours >= 12 ? "PM" : "AM";
+  const hour12 = hours % 12 || 12;
+
+  return `${hour12}:${String(minutes).padStart(2, "0")} ${suffix}`;
+}
+
+function updateShiftLabel() {
+  const shift = getSavedShift();
+  const label = document.getElementById("activeShiftLabel");
+
+  if (label) {
+    // label.textContent =
+    //   `Shift: ${formatShiftTime(shift.start)} – ${formatShiftTime(shift.end)}`;
+    label.textContent = "Note: Shift Timing feature coming soon!";
+  }
+}
+
+function closeShiftPopup() {
+  document.getElementById("shiftPopupOverlay")
+    ?.classList.remove("open");
+}
+
+function openShiftPopup() {
+  const shift = getSavedShift();
+
+  document.getElementById("shiftStartTime").value = shift.start;
+  document.getElementById("shiftEndTime").value = shift.end;
+
+  document.getElementById("shiftPopupOverlay")
+    .classList.add("open");
+}
+
+function saveShiftPopup() {
+  const start = document.getElementById("shiftStartTime").value;
+  const end = document.getElementById("shiftEndTime").value;
+
+  if (!start || !end || start === end) {
+    alert("Please select a valid shift start and end time.");
+    return;
+  }
+
+  localStorage.setItem(
+    SHIFT_STORAGE_KEY,
+    JSON.stringify({ start, end })
+  );
+
+  updateShiftLabel();
+  closeShiftPopup();
+
+  alert("Shift timing saved successfully!");
+
+  // Refresh the report using the saved shift.
+  // This takes effect after the report generator is connected below.
+  if (typeof generateShiftReport === "function") {
+    generateShiftReport();
+  }
+}
+
+document.getElementById("openShiftSettings")
+  ?.addEventListener("click", openShiftPopup);
+
+document.getElementById("closeShiftSettings")
+  ?.addEventListener("click", closeShiftPopup);
+
+document.getElementById("cancelShiftSettings")
+  ?.addEventListener("click", closeShiftPopup);
+
+document.getElementById("saveShiftSettings")
+  ?.addEventListener("click", saveShiftPopup);
+
+document.getElementById("shiftPopupOverlay")
+  ?.addEventListener("click", function (event) {
+    if (event.target === this) closeShiftPopup();
+  });
+
+updateShiftLabel();
