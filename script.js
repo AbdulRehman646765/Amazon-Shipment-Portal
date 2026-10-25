@@ -1283,10 +1283,11 @@ function navigate(page) {
     bulkImport: "Bulk Report Import",
     employees: "Employee Performance",
     reports: "Daily Reports",
+    feedback: "Feedback Management",
   };
 
   if ($("pageTitle")) {
-    $("pageTitle").textContent = titles[page] || "ShipTrack";
+    $("pageTitle").textContent = titles[page] || "TEKXS Shipments";
   }
 
   // Refresh page data on navigation so content is never stale
@@ -1297,6 +1298,7 @@ function navigate(page) {
     renderSelects();
     generateReport();
   }
+  if (page === "feedback") renderFeedback();
 }
 
 function openModal(record = null) {
@@ -3029,7 +3031,6 @@ if (document.readyState === "loading") {
 
 ///////////////////////////
 
-
 /* ==================================
    SHIFT TIMING SETTINGS
 ================================== */
@@ -3040,9 +3041,7 @@ function getSavedShift() {
   try {
     const saved = localStorage.getItem(SHIFT_STORAGE_KEY);
 
-    return saved
-      ? JSON.parse(saved)
-      : { start: "23:00", end: "07:00" };
+    return saved ? JSON.parse(saved) : { start: "23:00", end: "07:00" };
   } catch {
     return { start: "23:00", end: "07:00" };
   }
@@ -3068,8 +3067,7 @@ function updateShiftLabel() {
 }
 
 function closeShiftPopup() {
-  document.getElementById("shiftPopupOverlay")
-    ?.classList.remove("open");
+  document.getElementById("shiftPopupOverlay")?.classList.remove("open");
 }
 
 function openShiftPopup() {
@@ -3078,8 +3076,7 @@ function openShiftPopup() {
   document.getElementById("shiftStartTime").value = shift.start;
   document.getElementById("shiftEndTime").value = shift.end;
 
-  document.getElementById("shiftPopupOverlay")
-    .classList.add("open");
+  document.getElementById("shiftPopupOverlay").classList.add("open");
 }
 
 function saveShiftPopup() {
@@ -3091,10 +3088,7 @@ function saveShiftPopup() {
     return;
   }
 
-  localStorage.setItem(
-    SHIFT_STORAGE_KEY,
-    JSON.stringify({ start, end })
-  );
+  localStorage.setItem(SHIFT_STORAGE_KEY, JSON.stringify({ start, end }));
 
   updateShiftLabel();
   closeShiftPopup();
@@ -3108,21 +3102,274 @@ function saveShiftPopup() {
   }
 }
 
-document.getElementById("openShiftSettings")
+document
+  .getElementById("openShiftSettings")
   ?.addEventListener("click", openShiftPopup);
 
-document.getElementById("closeShiftSettings")
+document
+  .getElementById("closeShiftSettings")
   ?.addEventListener("click", closeShiftPopup);
 
-document.getElementById("cancelShiftSettings")
+document
+  .getElementById("cancelShiftSettings")
   ?.addEventListener("click", closeShiftPopup);
 
-document.getElementById("saveShiftSettings")
+document
+  .getElementById("saveShiftSettings")
   ?.addEventListener("click", saveShiftPopup);
 
-document.getElementById("shiftPopupOverlay")
+document
+  .getElementById("shiftPopupOverlay")
   ?.addEventListener("click", function (event) {
     if (event.target === this) closeShiftPopup();
   });
 
 updateShiftLabel();
+
+/* ===== TEKXS Portal Feedback ===== */
+(() => {
+  const button = document.getElementById("portalFeedbackBtn");
+  const overlay = document.getElementById("portalFeedbackOverlay");
+  const closeButton = document.getElementById("closeFeedbackPopup");
+  const hideButton = document.getElementById("hideFeedbackBtn");
+  const form = document.getElementById("portalFeedbackForm");
+
+  if (!button || !overlay || !form) return;
+
+  const openFeedback = () => overlay.classList.add("open");
+  const closeFeedback = () => overlay.classList.remove("open");
+
+  button.addEventListener("click", (event) => {
+    if (event.target.closest("#hideFeedbackBtn")) {
+      event.stopPropagation();
+      button.style.display = "none";
+      return;
+    }
+    openFeedback();
+  });
+
+  closeButton?.addEventListener("click", closeFeedback);
+
+  overlay.addEventListener("click", (event) => {
+    if (event.target === overlay) closeFeedback();
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") closeFeedback();
+  });
+
+  form.addEventListener("submit", (event) => {
+    event.preventDefault();
+
+    const category = document.getElementById("feedbackCategory").value;
+    const rating = form.querySelector(
+      'input[name="feedbackRating"]:checked',
+    )?.value;
+    const message = document.getElementById("feedbackMessage").value.trim();
+    const employee = document.getElementById("feedbackEmployee").value.trim();
+
+    if (!category || !rating || !message) {
+      alert("Please complete all required feedback fields.");
+      return;
+    }
+
+    const feedback = {
+      id: Date.now(),
+      category,
+      rating: Number(rating),
+      message,
+      employee: employee || "Anonymous",
+      submittedAt: new Date().toISOString(),
+    };
+
+    try {
+      const storageKey = "tekxs_portal_feedback_v1";
+      const saved = JSON.parse(localStorage.getItem(storageKey) || "[]");
+
+      if (!Array.isArray(saved)) {
+        throw new Error("Invalid feedback storage");
+      }
+
+      saved.push(feedback);
+      localStorage.setItem(storageKey, JSON.stringify(saved));
+
+      renderFeedback();
+
+      alert("Thank you! Your feedback has been saved successfully.");
+
+      form.reset();
+      closeFeedback();
+    } catch (error) {
+      alert("Feedback could not be saved. Please check browser storage.");
+    }
+  });
+})();
+
+// Feedback Management ka complete page
+
+/* =========================================
+   FEEDBACK MANAGEMENT
+   Reads from the existing feedback storage
+========================================= */
+
+const PORTAL_FEEDBACK_KEY = "tekxs_portal_feedback_v1";
+
+function readPortalFeedback() {
+  try {
+    const data = JSON.parse(localStorage.getItem(PORTAL_FEEDBACK_KEY) || "[]");
+
+    return Array.isArray(data) ? data : [];
+  } catch (error) {
+    console.error("Could not read feedback:", error);
+    return [];
+  }
+}
+
+function escapeFeedbackHTML(value) {
+  return String(value ?? "").replace(
+    /[&<>"']/g,
+    (char) =>
+      ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;",
+      })[char],
+  );
+}
+
+function formatFeedbackDate(value) {
+  if (!value) return "Date unavailable";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "Date unavailable";
+  }
+
+  return date.toLocaleString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function renderFeedback() {
+  const list = document.getElementById("feedbackList");
+  if (!list) return;
+
+  const feedback = readPortalFeedback();
+
+  const search = (document.getElementById("feedbackSearch")?.value || "")
+    .trim()
+    .toLowerCase();
+
+  const type = document.getElementById("feedbackTypeFilter")?.value || "all";
+  const rating =
+    document.getElementById("feedbackRatingFilter")?.value || "all";
+
+  const total = feedback.length;
+
+  const average = total
+    ? feedback.reduce((sum, item) => sum + (Number(item.rating) || 0), 0) /
+      total
+    : 0;
+
+  document.getElementById("feedbackTotal").textContent = total;
+  document.getElementById("feedbackAverage").textContent = total
+    ? `${average.toFixed(1)} / 5`
+    : "—";
+
+  document.getElementById("feedbackSuggestions").textContent = feedback.filter(
+    (item) => item.category === "Suggestion",
+  ).length;
+
+  document.getElementById("feedbackBugs").textContent = feedback.filter(
+    (item) => item.category === "Bug Report",
+  ).length;
+
+  const filtered = feedback
+    .filter((item) => {
+      const searchable = [item.employee, item.category, item.message]
+        .join(" ")
+        .toLowerCase();
+
+      return (
+        (!search || searchable.includes(search)) &&
+        (type === "all" || item.category === type) &&
+        (rating === "all" || Number(item.rating) === Number(rating))
+      );
+    })
+    .sort(
+      (a, b) => new Date(b.submittedAt || 0) - new Date(a.submittedAt || 0),
+    );
+
+  document.getElementById("feedbackResultCount").textContent =
+    `${filtered.length} ${filtered.length === 1 ? "entry" : "entries"}`;
+
+  document.getElementById("feedbackEmpty").hidden = filtered.length > 0;
+
+  list.innerHTML = filtered
+    .map((item) => {
+      const employee = String(item.employee || "Anonymous");
+      const initials = employee.trim().charAt(0).toUpperCase() || "?";
+      const stars = Math.max(0, Math.min(5, Number(item.rating) || 0));
+
+      return `
+      <article class="feedback-entry">
+        <div class="feedback-entry-top">
+          <div class="feedback-entry-identity">
+            <div class="feedback-entry-avatar">
+              ${escapeFeedbackHTML(initials)}
+            </div>
+            <div>
+              <h4>${escapeFeedbackHTML(employee)}</h4>
+              <div class="feedback-entry-date">
+                ${escapeFeedbackHTML(formatFeedbackDate(item.submittedAt))}
+              </div>
+            </div>
+          </div>
+
+          <span class="feedback-type-tag">
+            ${escapeFeedbackHTML(item.category || "Other")}
+          </span>
+        </div>
+
+        <div class="feedback-entry-rating"
+          aria-label="${stars} out of 5 stars">
+          ${"★".repeat(stars)}${"☆".repeat(5 - stars)}
+        </div>
+
+        <p class="feedback-entry-message">
+          ${escapeFeedbackHTML(item.message || "")}
+        </p>
+
+        <div class="feedback-entry-footer">
+          <span>TEKXS Shipment Portal</span>
+          <span>·</span>
+          <span>Rating: ${stars}/5</span>
+        </div>
+      </article>
+    `;
+    })
+    .join("");
+}
+
+document
+  .getElementById("refreshFeedback")
+  ?.addEventListener("click", renderFeedback);
+
+document
+  .getElementById("feedbackSearch")
+  ?.addEventListener("input", renderFeedback);
+
+document
+  .getElementById("feedbackTypeFilter")
+  ?.addEventListener("change", renderFeedback);
+
+document
+  .getElementById("feedbackRatingFilter")
+  ?.addEventListener("change", renderFeedback);

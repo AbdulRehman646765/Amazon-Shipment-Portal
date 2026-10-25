@@ -51,6 +51,10 @@
           <span class="nav-item-icon">▧</span>
           <span>Daily Reports</span>
         </button>
+        <button class="nav-item" data-page="feedback">
+          <span class="nav-item-icon">✉</span>
+          <span>Feedback Management</span>
+        </button>
 
         <div class="sidebar-bottom">
           <div class="sidebar-location-pill">
@@ -167,19 +171,19 @@
             </article>
             <article class="stat-card">
               <div class="stat-top">
-                <span>Submitted ASINs</span>
+                <span>Submitted Shipments</span>
                 <span class="stat-icon green">✓</span>
               </div>
               <strong id="totalSubmitted">0</strong>
-              <small>ASINs submitted</small>
+              <small>Submitted references</small>
             </article>
             <article class="stat-card">
               <div class="stat-top">
-                <span>Rejected ASINs</span>
+                <span>Rejected Shipments</span>
                 <span class="stat-icon red">!</span>
               </div>
               <strong id="totalRejected">0</strong>
-              <small>ASINs rejected</small>
+              <small>Rejected references</small>
             </article>
           </div>
 
@@ -449,7 +453,7 @@
 
           <!-- ── Employee Targets Panel ── -->
           <div
-            class="panel analytics-panel collapsible-panel open"
+            class="panel analytics-panel collapsible-panel"
             id="empTargetsPanel"
             style="margin-bottom: 20px"
           >
@@ -774,7 +778,7 @@ Date | Reference No. | ASIN | Status | Units | Time | Company
                 id="openShiftSettings"
                 class="secondary-btn"
                 disabled
-                style="cursor: not-allowed;"
+                style="cursor: not-allowed"
               >
                 🕒 Shift Timing
               </button>
@@ -844,7 +848,7 @@ Date | Reference No. | ASIN | Status | Units | Time | Company
                 </select>
               </label>
               <div class="report-action-buttons">
-                <button class="primary-btn" id="generateReport">
+                <button class="primary-btn" id="downloadPdf">
                   Generate Report
                 </button>
                 <button
@@ -923,9 +927,88 @@ Date | Reference No. | ASIN | Status | Units | Time | Company
               <div class="backup-group">
                 <p class="backup-label">⚙️ Danger Zone</p>
                 <button class="secondary-btn" id="clearDemo">
-                  Reset Demo Data
+                  All Clear DATA
                 </button>
               </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Feedback Management Page -->
+        <section class="page" id="feedbackPage">
+          <div class="section-heading">
+            <div>
+              <h2>Feedback Management</h2>
+              <p>Review feedback submitted by your portal users.</p>
+            </div>
+            <button type="button" class="secondary-btn" id="refreshFeedback">
+              ↻ Refresh
+            </button>
+          </div>
+
+          <!-- Feedback Statistics -->
+          <div class="feedback-stats-grid">
+            <div class="panel feedback-stat">
+              <span>Total Feedback</span>
+              <h3 id="feedbackTotal">0</h3>
+            </div>
+            <div class="panel feedback-stat">
+              <span>Average Rating</span>
+              <h3 id="feedbackAverage">—</h3>
+            </div>
+            <div class="panel feedback-stat">
+              <span>Suggestions</span>
+              <h3 id="feedbackSuggestions">0</h3>
+            </div>
+            <div class="panel feedback-stat">
+              <span>Bug Reports</span>
+              <h3 id="feedbackBugs">0</h3>
+            </div>
+          </div>
+
+          <!-- Filters -->
+          <div class="panel feedback-filter-panel">
+            <div class="feedback-filters">
+              <input
+                type="search"
+                id="feedbackSearch"
+                placeholder="Search employee or comments..."
+              />
+
+              <select id="feedbackTypeFilter">
+                <option value="all">All Feedback Types</option>
+                <option value="Suggestion">Suggestions</option>
+                <option value="Bug Report">Bug Reports</option>
+                <option value="Feature Request">Feature Requests</option>
+                <option value="Other">Other</option>
+              </select>
+
+              <select id="feedbackRatingFilter">
+                <option value="all">All Ratings</option>
+                <option value="5">5 Stars</option>
+                <option value="4">4 Stars</option>
+                <option value="3">3 Stars</option>
+                <option value="2">2 Stars</option>
+                <option value="1">1 Star</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Feedback List -->
+          <div class="panel">
+            <div class="panel-heading">
+              <div>
+                <h3>Submitted Feedback</h3>
+                <p id="feedbackResultCount">0 entries</p>
+              </div>
+            </div>
+
+            <div id="feedbackList" class="feedback-list"></div>
+
+            <div id="feedbackEmpty" class="feedback-empty" hidden>
+              <div class="feedback-empty-icon">✉</div>
+              <h3>No feedback found</h3>
+              <p>Feedback submissions will appear here.</p>
             </div>
           </div>
         </section>
@@ -1070,6 +1153,101 @@ Date | Reference No. | ASIN | Status | Units | Time | Company
     </div>
 
     <div class="toast" id="toast"></div>
+
+    <!-- Floating Feedback Button -->
+    <button
+  type="button"
+  id="portalFeedbackBtn"
+  class="portal-feedback-btn"
+  title="Send Feedback"
+  aria-label="Send Feedback"
+>
+  <span class="feedback-btn-icon">✉</span>
+</button>
+
+    <!-- Feedback Popup -->
+    <div class="portal-feedback-overlay" id="portalFeedbackOverlay">
+      <div class="portal-feedback-panel">
+        <div class="portal-feedback-header">
+          <div>
+            <span class="feedback-eyebrow">TEKXS SUPPORT</span>
+            <h3>Share your feedback</h3>
+            <p>Help us improve your shipment portal.</p>
+          </div>
+          <button type="button" id="closeFeedbackPopup" class="feedback-close">
+            ×
+          </button>
+        </div>
+
+        <form id="portalFeedbackForm">
+          <label for="feedbackCategory">Feedback type</label>
+          <select id="feedbackCategory" required>
+            <option value="">Select a category</option>
+            <option value="Suggestion">Suggestion</option>
+            <option value="Bug Report">Report a problem</option>
+            <option value="Feature Request">Feature request</option>
+            <option value="Other">Other</option>
+          </select>
+
+          <label>How is your experience?</label>
+          <div class="feedback-ratings">
+            <label
+              ><input type="radio" name="feedbackRating" value="1" /><span
+                >😞</span
+              ><small>Poor</small></label
+            >
+            <label
+              ><input type="radio" name="feedbackRating" value="2" /><span
+                >😕</span
+              ><small>Fair</small></label
+            >
+            <label
+              ><input type="radio" name="feedbackRating" value="3" /><span
+                >😐</span
+              ><small>Okay</small></label
+            >
+            <label
+              ><input type="radio" name="feedbackRating" value="4" /><span
+                >🙂</span
+              ><small>Good</small></label
+            >
+            <label
+              ><input
+                type="radio"
+                name="feedbackRating"
+                value="5"
+                required
+              /><span>🤩</span><small>Great</small></label
+            >
+          </div>
+
+          <label for="feedbackEmployee">Your name</label>
+          <input
+            type="text"
+            id="feedbackEmployee"
+            maxlength="100"
+            placeholder="Enter your name"
+            required
+          />
+          <label for="feedbackMessage">Your comments</label>
+          <textarea
+            id="feedbackMessage"
+            rows="4"
+            maxlength="1500"
+            placeholder="Tell us what we can improve..."
+            required
+          ></textarea>
+
+
+          <button type="submit" class="feedback-submit-btn">
+            Submit Feedback →
+          </button>
+          <p class="feedback-privacy">
+            Your feedback is important.
+          </p>
+        </form>
+      </div>
+    </div>
 
     <script src="script.js"></script>
   </body>
