@@ -2472,7 +2472,7 @@ input.asin-ok {
 .portal-feedback-btn {
   position: fixed;
   right: 18px;
-  bottom: 16px;
+  bottom: 60px;
   z-index: 9000;
   width: 43px;
   height: 43px;
